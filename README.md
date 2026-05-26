@@ -21,8 +21,8 @@
 
 | Nombre              | Rol                          | GitHub                          | Email                          |
 |---------------------|------------------------------|---------------------------------|--------------------------------|
-| Tu Nombre           | Líder / Desarrollador Principal | [@tuusuario](https://github.com/tuusuario) | tuemail@ejemplo.com           |
-| Nombre Compañero 1  | Desarrollador Backend        | [@usuario2](https://github.com/usuario2)   | email2@ejemplo.com            |
+| Ibañez Tiago Manuel          | Líder / Desarrollador Principal | [@Bebedor22](https://github.com/Bebedor22) | tibanez@alu.frlp.utn.edu.ar           |
+| Dylan Benavente  | Desarrollador Backend        | [@dylanbenavente025-arg](https://github.com/dylanbenavente025-arg)   | email2@ejemplo.com            |
 | Nombre Compañero 2  | Diseñador / Frontend         | [@usuario3](https://github.com/usuario3)   | email3@ejemplo.com            |
 
 ### Reglas básicas del equipo
