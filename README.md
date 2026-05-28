@@ -23,9 +23,8 @@
 |---------------------|------------------------------|---------------------------------|--------------------------------|
 | Ibañez Tiago Manuel          | Líder / Desarrollador Principal | [@Bebedor22](https://github.com/Bebedor22) | tibanez@alu.frlp.utn.edu.ar           |
 | Dylan Benavente  | Desarrollador Backend        | [@dylanbenavente025-arg](https://github.com/dylanbenavente025-arg)   | dylanbenavente025@gmail.com            |
-| Lautaro Scarselletta  | Diseñador / Frontend         | [@lauscarsel](https://github.com/lauscarsel)   | scarselllautaro@gmail.com
-|
-| Facundo Colavitte| Diseñador / Frontend         | [@fcolavitte](https://github.com/fcolavitte)   | email4@ejemplo.com            |
+| Lautaro Scarselletta  | Diseñador / Frontend         | [@lauscarsel](https://github.com/lauscarsel)   | scarselllautaro@gmail.com |
+| Facundo Colavitte| Diseñador / Frontend         | [@fcolavitte](https://github.com/fcolavitte)   | facundocolavitte@gmail.com            |
 
 
 ### Reglas básicas del equipo
