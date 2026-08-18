@@ -1,70 +1,57 @@
-import type { ReactNode } from "react";
 import { Link } from "expo-router";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
+import { WizardShell, wizardStyles } from "../../src/components/wizard/WizardShell";
 
 export default function Step1Screen() {
-  return (
-    <View style={styles.container}>
-      <WizardCard
-        step="1 / 4"
-        title="Datos personales"
-        subtitle="Arrancamos con el alta del aspirante."
-      >
-        <TextInput placeholder="Nombre" style={styles.input} />
-        <TextInput placeholder="Apellido" style={styles.input} />
-        <TextInput placeholder="DNI" keyboardType="numeric" style={styles.input} />
-        <TextInput placeholder="Email" keyboardType="email-address" style={styles.input} />
-      </WizardCard>
+  const { width } = useWindowDimensions();
+  const isCompact = width < 860;
+  const halfOrFull = isCompact ? wizardStyles.fullField : wizardStyles.halfField;
 
-      <Link href="/wizard/step-2" asChild>
-        <Pressable style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>Continuar</Text>
-        </Pressable>
-      </Link>
-    </View>
+  return (
+    <WizardShell
+      currentStep={1}
+      title="Datos Personales"
+      subtitle="Completá la información básica del aspirante."
+      footer={
+        <Link href="/wizard/step-2" asChild>
+          <Pressable style={wizardStyles.primaryButton}>
+            <Text style={wizardStyles.primaryButtonText}>Siguiente ›</Text>
+          </Pressable>
+        </Link>
+      }
+    >
+      <View style={wizardStyles.twoColumns}>
+        <View style={halfOrFull}>
+          <Text style={wizardStyles.label}>Nombre(s)</Text>
+          <TextInput placeholder="Juan" style={wizardStyles.input} />
+        </View>
+        <View style={halfOrFull}>
+          <Text style={wizardStyles.label}>Apellido(s)</Text>
+          <TextInput placeholder="Pérez" style={wizardStyles.input} />
+        </View>
+        <View style={halfOrFull}>
+          <Text style={wizardStyles.label}>DNI</Text>
+          <TextInput placeholder="12.345.678" keyboardType="numeric" style={wizardStyles.input} />
+        </View>
+        <View style={halfOrFull}>
+          <Text style={wizardStyles.label}>Nacionalidad</Text>
+          <TextInput placeholder="Argentina" style={wizardStyles.input} />
+        </View>
+        <View style={halfOrFull}>
+          <Text style={wizardStyles.label}>Fecha de Nacimiento</Text>
+          <TextInput placeholder="DD/MM/AAAA" style={wizardStyles.input} />
+        </View>
+        <View style={halfOrFull}>
+          <Text style={wizardStyles.label}>Género</Text>
+          <TextInput placeholder="Seleccionar" style={wizardStyles.input} />
+        </View>
+      </View>
+      <View style={wizardStyles.radioItem}>
+        <View style={wizardStyles.checkbox} />
+        <Text style={wizardStyles.checkboxLabel}>¿Posee discapacidad?</Text>
+      </View>
+    </WizardShell>
   );
 }
 
-function WizardCard({
-  step,
-  title,
-  subtitle,
-  children,
-}: {
-  step: string;
-  title: string;
-  subtitle: string;
-  children: ReactNode;
-}) {
-  return (
-    <View style={styles.card}>
-      <Text style={styles.step}>{step}</Text>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.subtitle}>{subtitle}</Text>
-      <View style={styles.fields}>{children}</View>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, gap: 16, justifyContent: "center" },
-  card: { backgroundColor: "#fff", borderRadius: 24, padding: 24, gap: 8 },
-  step: { color: "#2d7a65", fontWeight: "700" },
-  title: { fontSize: 28, fontWeight: "800", color: "#111827" },
-  subtitle: { color: "#4b5563", fontSize: 15, lineHeight: 22 },
-  fields: { gap: 12, marginTop: 8 },
-  input: {
-    backgroundColor: "#f3f4f6",
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    borderRadius: 14,
-    fontSize: 16,
-  },
-  primaryButton: {
-    backgroundColor: "#0d2035",
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: "center",
-  },
-  primaryButtonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-});
+const styles = StyleSheet.create({});
