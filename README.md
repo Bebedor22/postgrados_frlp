@@ -65,6 +65,7 @@ Lee en este orden antes de escribir código:
 4. 🏗️ [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) — Cómo estructurar el código
 5. 🗓️ [`docs/CRONOGRAMA.md`](docs/CRONOGRAMA.md) — Tu roadmap personal de las próximas 30 semanas
 6. 🚀 [`onboarding/Guia_KickOff.md`](docs/onboarding/GUIA_KICKOFF.md) — Qué entregar en la semana 3
+7. 🔌 [`docs/DATA_MAPPING.md`](docs/DATA_MAPPING.md) — **Mapeo de datos Frontend ↔ Backend (FastAPI)**
 ---
 
 ## Estructura de Módulos

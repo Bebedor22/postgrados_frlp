@@ -1,83 +1,102 @@
-import type { ReactNode } from "react";
 import { Link } from "expo-router";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, Text, TextInput, View, useWindowDimensions } from "react-native";
+import { WizardShell, wizardStyles } from "../../src/components/wizard/WizardShell";
 
 export default function Step3Screen() {
-  return (
-    <View style={styles.container}>
-      <Card step="3 / 4" title="Antecedentes y motivaciones" subtitle="Qué estudió y por qué quiere entrar.">
-        <TextInput placeholder="Título de grado" style={styles.input} />
-        <TextInput placeholder="Carrera de posgrado" style={styles.input} />
-        <TextInput placeholder="Motivación" multiline style={[styles.input, styles.textarea]} />
-      </Card>
+  const { width } = useWindowDimensions();
+  const isCompact = width < 860;
+  const halfOrFull = isCompact ? wizardStyles.fullField : wizardStyles.halfField;
 
-      <View style={styles.row}>
-        <Link href="/wizard/step-2" asChild>
-          <Pressable style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Volver</Text>
-          </Pressable>
-        </Link>
-        <Link href="/wizard/step-4" asChild>
-          <Pressable style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Continuar</Text>
-          </Pressable>
-        </Link>
+  return (
+    <WizardShell
+      currentStep={3}
+      title="Antecedentes y Motivaciones"
+      subtitle="Información académica y razones para tu postulación."
+      footer={
+        <>
+          <Link href="/wizard/step-2" asChild>
+            <Pressable style={wizardStyles.secondaryButton}>
+              <Text style={wizardStyles.secondaryButtonText}>‹ Anterior</Text>
+            </Pressable>
+          </Link>
+          <Link href="/wizard/step-4" asChild>
+            <Pressable style={wizardStyles.primaryButton}>
+              <Text style={wizardStyles.primaryButtonText}>Siguiente ›</Text>
+            </Pressable>
+          </Link>
+        </>
+      }
+    >
+      <View style={wizardStyles.section}>
+        <Text style={wizardStyles.sectionTitle}>Antecedentes académicos</Text>
+        <View style={wizardStyles.twoColumns}>
+          <View style={halfOrFull}>
+            <Text style={wizardStyles.label}>Título de grado obtenido</Text>
+            <TextInput placeholder="Lic. en Sociología" style={wizardStyles.input} />
+          </View>
+          <View style={halfOrFull}>
+            <Text style={wizardStyles.label}>Institución</Text>
+            <TextInput placeholder="Universidad Nacional..." style={wizardStyles.input} />
+          </View>
+          <View style={halfOrFull}>
+            <Text style={wizardStyles.label}>Año de graduación</Text>
+            <TextInput placeholder="2019" keyboardType="numeric" style={wizardStyles.input} />
+          </View>
+          <View style={halfOrFull}>
+            <Text style={wizardStyles.label}>Carrera a inscribirse</Text>
+            <TextInput placeholder="Seleccionar maestría/doctorado" style={wizardStyles.input} />
+          </View>
+        </View>
+        
+        <Text style={wizardStyles.label}>¿Posee otro título de posgrado?</Text>
+        <View style={wizardStyles.radioRow}>
+          <View style={wizardStyles.radioItem}>
+            <View style={wizardStyles.radioCircle} />
+            <Text style={wizardStyles.checkboxLabel}>Sí</Text>
+          </View>
+          <View style={wizardStyles.radioItem}>
+            <View style={[wizardStyles.radioCircle, wizardStyles.radioCircleSelected]}>
+              <View style={wizardStyles.radioInner} />
+            </View>
+            <Text style={wizardStyles.checkboxLabel}>No</Text>
+          </View>
+        </View>
       </View>
-    </View>
+
+      <View style={wizardStyles.section}>
+        <Text style={wizardStyles.sectionTitle}>Motivaciones y perfil</Text>
+        <View style={wizardStyles.fullField}>
+          <Text style={wizardStyles.label}>¿Por qué desea realizar esta carrera? (máx. 500 caracteres)</Text>
+          <TextInput 
+            placeholder="Describa sus motivaciones..." 
+            multiline 
+            numberOfLines={4} 
+            maxLength={500} 
+            style={[wizardStyles.input, wizardStyles.textArea]} 
+          />
+        </View>
+
+        <View style={{ marginTop: 20 }}>
+          <Text style={wizardStyles.label}>¿Actualmente trabaja en el área de la carrera?</Text>
+          <View style={wizardStyles.radioRow}>
+            <View style={wizardStyles.radioItem}>
+              <View style={wizardStyles.radioCircle} />
+              <Text style={wizardStyles.checkboxLabel}>Sí</Text>
+            </View>
+            <View style={wizardStyles.radioItem}>
+              <View style={[wizardStyles.radioCircle, wizardStyles.radioCircleSelected]}>
+                <View style={wizardStyles.radioInner} />
+              </View>
+              <Text style={wizardStyles.checkboxLabel}>No</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={[wizardStyles.fullField, { marginTop: 20 }]}>
+          <Text style={wizardStyles.label}>¿Cómo conoció la oferta académica?</Text>
+          <TextInput placeholder="Seleccione una opción..." style={wizardStyles.input} />
+        </View>
+      </View>
+    </WizardShell>
   );
 }
-
-function Card({
-  step,
-  title,
-  subtitle,
-  children,
-}: {
-  step: string;
-  title: string;
-  subtitle: string;
-  children: ReactNode;
-}) {
-  return (
-    <View style={styles.card}>
-      <Text style={styles.step}>{step}</Text>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.subtitle}>{subtitle}</Text>
-      <View style={styles.fields}>{children}</View>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, gap: 16, justifyContent: "center" },
-  card: { backgroundColor: "#fff", borderRadius: 24, padding: 24, gap: 8 },
-  step: { color: "#2d7a65", fontWeight: "700" },
-  title: { fontSize: 28, fontWeight: "800", color: "#111827" },
-  subtitle: { color: "#4b5563", fontSize: 15, lineHeight: 22 },
-  fields: { gap: 12, marginTop: 8 },
-  input: {
-    backgroundColor: "#f3f4f6",
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    borderRadius: 14,
-    fontSize: 16,
-  },
-  textarea: { minHeight: 110, textAlignVertical: "top" },
-  row: { flexDirection: "row", gap: 12 },
-  primaryButton: {
-    flex: 1,
-    backgroundColor: "#0d2035",
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: "center",
-  },
-  secondaryButton: {
-    flex: 1,
-    backgroundColor: "#e8f3ef",
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: "center",
-  },
-  primaryButtonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  secondaryButtonText: { color: "#1d6b59", fontSize: 16, fontWeight: "700" },
-});
