@@ -2,7 +2,7 @@ import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { scheduleTestNotification } from "../src/lib/notifications";
-
+import { Marco } from './components/navLeft.tsx'; 
 
 const FECHAS = ["12/03", "19/03", "26/03", "02/04", "09/04", "16/04"];
 
@@ -59,7 +59,7 @@ export default function PlanillaDocente() {
   const handleGuardar = () => setSaved(true);
 
   return (
-    <>
+    <Marco>
       <div style={{ padding: "20px 24px" }}>
 
         {/* Seminar info bar */}
@@ -292,6 +292,6 @@ export default function PlanillaDocente() {
           </div>
         </div>
       </div>
-    </>
+    </Marco>
   );
 }

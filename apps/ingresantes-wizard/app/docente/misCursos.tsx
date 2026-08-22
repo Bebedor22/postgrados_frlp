@@ -2,6 +2,7 @@ import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { scheduleTestNotification } from "../src/lib/notifications";
+import { Marco } from './components/navLeft.tsx'; 
 
 
 const cursosActivos = [
@@ -58,7 +59,7 @@ function EstadoBadge({ estado }: { estado: string }) {
 export default function MisCursosScreen() {
   const router = useRouter();
   return (
-    <>
+    <Marco>
       <div style={{ padding: "24px", maxWidth: "900px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
           <div style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#22c55e" }} />
@@ -207,6 +208,6 @@ export default function MisCursosScreen() {
           ))}
         </div>
       </div>
-    </>
+    </Marco>
   );
 }
