@@ -25,7 +25,7 @@ Todo endpoint es privado hasta que se demuestre que debe ser público. Todo arch
 Toda decisión arquitectónica significativa —elección de stack, estrategia de almacenamiento, mecanismo de autenticación— debe registrarse en un ADR antes de implementarse. No para pedir permiso, sino para poder revisarla cuando el contexto cambie.
 
 ### 1.6 Workspace explícito por frente
-Cada frente de trabajo debe tener una carpeta dedicada y documentada. Para este equipo, el workspace inicial es `apps/ingresantes-wizard/`, reservado al wizard de inscripción en Expo.
+Cada frente de trabajo debe tener una carpeta dedicada y documentada. Para este equipo, el workspace inicial es `../apps/frontend/`, reservado al wizard de inscripción en Expo.
 
 ### 1.7 Notificaciones del wizard
 El frente de Ingresantes usa `expo-notifications` para pruebas locales de avisos y futuras confirmaciones de trámite.

@@ -1,0 +1,38 @@
+import { StyleSheet, Text, View } from "react-native";
+import { AppLayout } from "../../src/components/layout/AppLayout";
+
+const alumnoNav = [
+  { icon: "🕮", label: "Mi Avance", to: "/alumno/miAvance", group: "Cursadas" },
+  { icon: "📋", label: "Estado de trámite", to: "/alumno/estadoDeTramite", group: "Gestión" },
+  { icon: "📋", label: "Inscripción", to: "/alumno/inscripcion", group: "Gestión" },
+];
+
+export default function Inscripcion() {
+  return (
+    <AppLayout portalTitle="Portal Alumno" navItems={alumnoNav}>
+      <View style={styles.container}>
+        <Text style={styles.title}>Inscripción</Text>
+        <Text style={styles.subtitle}>Sección disponible próximamente.</Text>
+      </View>
+    </AppLayout>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    padding: 24,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  subtitle: {
+    fontSize: 14,
+    color: "#6b7280",
+  },
+});

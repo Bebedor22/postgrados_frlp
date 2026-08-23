@@ -99,7 +99,7 @@ npm install        # Si usás Node/NestJS
 # -- ó --
 pip install -r requirements.txt  # Si usás Python/FastAPI
 # Wizard Expo:
-cd apps/ingresantes-wizard && npm install
+cd apps/frontend && npm install
 
 # 5. Ejecutá las migraciones de base de datos
 npm run db:migrate   # Prisma
@@ -107,7 +107,7 @@ npm run db:migrate   # Prisma
 alembic upgrade head  # SQLAlchemy
 
 # 6. Iniciá el servidor de desarrollo
-cd apps/ingresantes-wizard && npx expo start   # Wizard de Ingresantes
+cd apps/frontend && npx expo start   # Wizard de Ingresantes
 # -- ó --
 npm run dev      # Si estás trabajando sobre el portal web en paralelo
 ```

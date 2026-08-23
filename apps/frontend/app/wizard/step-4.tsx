@@ -101,7 +101,7 @@ export default function Step4Screen() {
 
       <View style={[wizardStyles.section, { marginTop: 20 }]}>
         <Text style={wizardStyles.sectionTitle}>Prueba de Notificaciones</Text>
-        <Text style={wizardStyles.stepSubtitle}>
+        <Text style={wizardStyles.dropzoneSubtext}>
           Podés probar el sistema de notificaciones local antes de finalizar.
         </Text>
         <Pressable

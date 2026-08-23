@@ -11,7 +11,7 @@
     "deploy": "npx expo export -p web && npx eas-cli@latest deploy"
   },
   "dependencies": {
-    "expo": "^57.0.1",
+    "expo": "^57.0.15",
     "expo-notifications": "~57.0.12",
     "expo-router": "~57.0.2",
     "expo-status-bar": "~57.0.1",
