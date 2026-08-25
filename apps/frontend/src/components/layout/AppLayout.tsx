@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   sidebar: {
-    width: 240,
+    flex: 1,
     backgroundColor: NAV_BG,
   },
   sidebarContent: {
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   main: {
-    flex: 1,
+    flex: 4,
     backgroundColor: "#f2f3f5",
   },
   mainCompact: {
