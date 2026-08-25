@@ -9,7 +9,69 @@ Este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
-> Los cambios que están en `develop` pero no en un release van acá.
+> - Vistas de "en contrucción".
+> - Health más estético.
+> - Ventana de 404.
+> - Se está preparando otra refactorización.
+
+---
+
+## [v0.1.6] - 25/08/2026 - Fecha de muestra Frontend
+
+### Added
+- Vistas de Conducción (CPR)
+- Se linkean las páginas
+
+### Changed
+
+- Se mueve Login a vista principal
+
+### Fixed
+
+- Se corrije estilo visual de componente Layout (ocupaba mucho ancho en la pantalla)
+
+---
+
+## [v0.1.5] - 23/08/2026
+
+### Added
+- Vistas de Alumno
+- Ventana de health
+
+---
+
+## [v0.1.4] - 22/08/2026
+
+### Added
+- Vistas de Docente
+- Componente Layout
+
+---
+
+## [v0.1.3] - 20/08/2026
+
+### Added
+- Vista de Login
+
+
+---
+
+## [v0.1.2] - 18/08/2026
+
+### Added
+- Estructura base de archivos
+- wizard
+
+---
+
+## [v0.1.1] - 02/06/2026
+
+### Added
+- Mockups
+
+---
+
+## [v0.1.0] - 26/05/2026
 
 ### Added
 - Estructura inicial del repositorio
@@ -17,21 +79,11 @@ Este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 
 ---
 
-## [v0.1.0-alpha] — Sprint 0 (esperado 15/05/2026)
-
-### Added
-- Autenticación JWT básica (login/logout)
-- Modelo de base de datos inicial con migraciones
-- Docker Compose funcional para ambiente de desarrollo
-- Pipeline de CI/CD base en GitHub Actions (lint + test + build)
-
----
-
 ## Historial de versiones planificadas
 
 | Versión | Fecha planificada | Descripción |
 |---------|:-----------------:|------------|
-| v0.1.0-alpha | 15/05/2026 | Auth + DB + Docker |
-| v0.5.0-beta | 31/07/2026 | Core completo |
-| v0.8.0-rc | 11/09/2026 | Core + Módulo especializado |
+| v0.2.0-alpha | 25/08/2026 | Frontend |
+| v0.5.0-beta | 15/10/2026 | Backend |
+| v0.8.0-rc | 23/10/2026 | Core + Módulo especializado |
 | v1.0.0 | 23/10/2026 | Sistema completo + docs |
