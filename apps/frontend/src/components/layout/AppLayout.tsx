@@ -66,10 +66,10 @@ export function AppLayout({ portalTitle, navItems, children }: AppLayoutProps) {
                     <Link key={item.to} href={item.to} asChild>
                       <Pressable
                         style={({ pressed }) => [
-                          styles.navItem,
                           isActive && styles.navItemActive,
                           pressed && styles.navItemPressed,
                         ]}
+					    style={styles.navItem}
                       >
                         <Text style={styles.navIcon}>{item.icon}</Text>
                         <Text style={styles.navLabel}>{item.label}</Text>
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   sidebar: {
-    width: 240,
+    flex: 1,
     backgroundColor: NAV_BG,
   },
   sidebarContent: {
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   main: {
-    flex: 1,
+    flex: 4,
     backgroundColor: "#f2f3f5",
   },
   mainCompact: {
