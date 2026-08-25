@@ -1,23 +1,22 @@
-# Expo Router Example
+# Frontend
 
-Use [`expo-router`](https://docs.expo.dev/router/introduction/) to build native navigation using files in the `app/` directory.
+Para la arquitectura del FrontEnd se utilizó React + Expo.
+Los archivos principales se encuentran en la carpeta app.
+Se realizó un refactor en la rama feature/refactor-and-realignment sobre la cual es la última versión en la que se está trabajando.
 
-## Launch your own
+# Expo Router
 
-[![Launch with Expo](https://github.com/expo/examples/blob/master/.gh-assets/launch.svg?raw=true)](https://launch.expo.dev/?github=https://github.com/expo/examples/tree/master/with-router)
+Expo Router es una biblioteca de enrutamiento basada en archivos para aplicaciones en React Native y web.
 
 ## 🚀 How to use
 
 ```sh
-npx create-expo-app -e with-router
+Si no se tiene instalado Expo usar:
+npm install expo-router
+
+Para iniciar el front usar:
+npx expo start ó npx expo start --web
 ```
-
-## Deploy
-
-Deploy on all platforms with Expo Application Services (EAS).
-
-- Deploy the website: `npx eas-cli deploy` — [Learn more](https://docs.expo.dev/eas/hosting/get-started/)
-- Deploy on iOS and Android using: `npx eas-cli build` — [Learn more](https://expo.dev/eas)
 
 ## 📝 Notes
 
