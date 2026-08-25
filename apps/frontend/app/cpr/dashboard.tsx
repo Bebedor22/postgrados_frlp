@@ -69,7 +69,7 @@ const exportBtn = (
 
 const navItems = [
   { icon: "📊", label: "Dashboard", to: "/cpr/dashboard", group: "Portal Conducción" },
-  { icon: "📋", label: "Gestión de Inscripciones", to: "/cpr/dashboard", group: "Portal Conducción" },
+  { icon: "📋", label: "Gestión de Inscripciones", to: "/cpr/gestionDeInscripciones", group: "Portal Conducción" },
   { icon: "🔍", label: "Buscador de Estudiantes", to: "/cpr/dashboard", group: "Portal Conducción" },
   { icon: "📑", label: "Reportes y Exportación", to: "/cpr/dashboard", group: "Portal Conducción" },
   { icon: "📄", label: "Gestión de Tesis", to: "/cpr/dashboard", group: "Portal Conducción" },
