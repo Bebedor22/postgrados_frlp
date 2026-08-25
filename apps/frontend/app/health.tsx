@@ -1,11 +1,11 @@
-import { StyleSheet, Text, View } from "react-native";
+import {StyleSheet, Text, View} from "react-native";
 
 export default function HealthScreen() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Funciona!</Text>
-      <Text style={styles.subtitle}>(en teoría...)</Text>
-    </View>
+      <View style={styles.container}>
+          <Text style={styles.title}>Funciona!</Text>
+          <Text style={styles.subtitle}>(en teoría...)</Text>
+      </View>
   );
 }
 
@@ -14,16 +14,17 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#f6f7fb",
-    gap: 8,
+      backgroundColor: "#f9fafb", // Un fondo gris muy sutil
   },
   title: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#111827",
+      fontSize: 32,
+      fontWeight: "bold",
+      color: "#0d2035", // Azul institucional
+      marginBottom: 8,
   },
   subtitle: {
-    fontSize: 15,
+      fontSize: 18,
     color: "#6b7280",
+      fontStyle: "italic",
   },
 });

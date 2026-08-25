@@ -1,9 +1,9 @@
-import type { ReactNode } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
-import { Link, usePathname, useRouter } from "expo-router";
+import type {ReactNode} from "react";
+import {Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View} from "react-native";
+import {Link, usePathname, useRouter} from "expo-router";
 
 export interface NavItem {
-  icon: string;
+  icon: ReactNode;
   label: string;
   to: string;
   group?: string;
@@ -63,15 +63,19 @@ export function AppLayout({ portalTitle, navItems, children }: AppLayoutProps) {
                 {(groups[groupKey] ?? []).map((item) => {
                   const isActive = pathname === item.to;
                   return (
-                    <Link key={item.to} href={item.to} asChild>
+                      <Link key={`${groupKey}-${item.label}-${item.to}`} href={item.to} asChild>
                       <Pressable
                         style={({ pressed }) => [
+                          styles.navItem,
                           isActive && styles.navItemActive,
                           pressed && styles.navItemPressed,
                         ]}
-					    style={styles.navItem}
                       >
-                        <Text style={styles.navIcon}>{item.icon}</Text>
+                        {typeof item.icon === "string" ? (
+                            <Text style={styles.navIcon}>{item.icon}</Text>
+                        ) : (
+                            <View style={styles.navIcon}>{item.icon}</View>
+                        )}
                         <Text style={styles.navLabel}>{item.label}</Text>
                       </Pressable>
                     </Link>
@@ -198,7 +202,8 @@ const styles = StyleSheet.create({
     backgroundColor: ACTIVE_BG,
   },
   navIcon: {
-    fontSize: 14,
+    width: 18,
+    alignItems: "center",
   },
   navLabel: {
     color: "#ffffff",

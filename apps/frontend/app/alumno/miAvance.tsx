@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { AppLayout } from "../../src/components/layout/AppLayout";
+import {useState} from "react";
+import {Pressable, ScrollView, StyleSheet, Text, View} from "react-native";
+import {AlertTriangle, CheckCircle2, Circle, Clock, Download, FileText, Info, User} from "lucide-react-native";
 
 const TABS = ["Resumen", "Seminarios", "TFI / Tesis", "Documentación", "Alertas", "Historial"];
 
@@ -12,16 +12,10 @@ const seminarios = [
   { id: 5, nombre: "Trabajo Final Integrador", asistencia: null, calificacion: null, fecha: null, estado: "No iniciado" },
 ];
 
-const navItems = [
-  { icon: "🕮", label: "Mi Avance", to: "/alumno/miAvance", group: "Cursadas" },
-  { icon: "📋", label: "Estado de trámite", to: "/alumno/estadoDeTramite", group: "Gestión" },
-  { icon: "📋", label: "Inscripción", to: "/alumno/inscripcion", group: "Gestión" },
-];
-
 function StatusIcon({ estado }: { estado: string }) {
-  if (estado === "Aprobado") return <Text style={styles.statusIcon}>🗹</Text>;
-  if (estado === "Cursando") return <Text style={styles.statusIcon}>🕖</Text>;
-  return null;
+    if (estado === "Aprobado") return <CheckCircle2 size={22} color="#22c55e"/>;
+    if (estado === "Cursando") return <Clock size={22} color="#f59e0b"/>;
+    return <Circle size={22} color="#d1d5db"/>;
 }
 
 function StatusBadge({ estado }: { estado: string }) {
@@ -41,12 +35,11 @@ export default function MiAvance() {
   const progreso = 62;
 
   return (
-    <AppLayout portalTitle="Portal Alumno" navItems={navItems}>
       <ScrollView contentContainerStyle={styles.page}>
         {/* Student card */}
         <View style={styles.card}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarIcon}>👤</Text>
+              <User size={28} color="#9ca3af"/>
           </View>
 
           <View style={styles.studentInfo}>
@@ -117,19 +110,22 @@ export default function MiAvance() {
                 <Text style={[styles.sectionTitle, styles.sectionTitleSpaced]}>Alertas</Text>
                 <View style={styles.alertsCol}>
                   <View style={styles.alertWarning}>
+                      <AlertTriangle size={15} color="#d97706"/>
                     <Text style={styles.alertWarningText}>
-                      ⚠️ Vencimiento de Seminario: 30 días restantes
+                        Vencimiento de Seminario: 30 días restantes
                     </Text>
                   </View>
                   <View style={styles.alertInfo}>
+                      <Info size={15} color="#3b82f6"/>
                     <Text style={styles.alertInfoText}>
-                      ℹ️ Plazo TFI: 180 días restantes
+                        Plazo TFI: 180 días restantes
                     </Text>
                   </View>
                 </View>
 
                 <View style={styles.actionsRow}>
                   <Pressable style={styles.primaryAction}>
+                      <Download size={14} color="white"/>
                     <Text style={styles.primaryActionText}>Descargar Certificado Analítico</Text>
                   </Pressable>
                   <Pressable style={styles.secondaryAction}>
@@ -142,23 +138,27 @@ export default function MiAvance() {
             {activeTab === "Alertas" && (
               <View style={styles.alertsCol}>
                 <View style={styles.alertWarning}>
+                    <AlertTriangle size={15} color="#d97706"/>
                   <Text style={styles.alertWarningText}>
-                    ⚠️ Vencimiento de Seminario: 30 días restantes
+                      Vencimiento de Seminario: 30 días restantes
                   </Text>
                 </View>
                 <View style={styles.alertInfo}>
-                  <Text style={styles.alertInfoText}>ℹ️ Plazo TFI: 180 días restantes</Text>
+                    <Info size={15} color="#3b82f6"/>
+                    <Text style={styles.alertInfoText}>Plazo TFI: 180 días restantes</Text>
                 </View>
               </View>
             )}
 
             {!["Resumen", "Alertas"].includes(activeTab) && (
-              <Text style={styles.placeholder}>📄 Sección disponible próximamente.</Text>
+                <View style={styles.placeholderContainer}>
+                    <FileText size={36} color="#d1d5db" style={{marginBottom: 12}}/>
+                    <Text style={styles.placeholder}>Sección disponible próximamente.</Text>
+                </View>
             )}
           </View>
         </View>
       </ScrollView>
-    </AppLayout>
   );
 }
 
@@ -389,10 +389,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "500",
   },
+    placeholderContainer: {
+        alignItems: "center",
+        justifyContent: "center",
+        paddingVertical: 40,
+    },
   placeholder: {
     color: "#6b7280",
     fontSize: 14,
     textAlign: "center",
-    paddingVertical: 40,
   },
 });

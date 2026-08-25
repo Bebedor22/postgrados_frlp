@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 
 interface UnderConstructionProps {
   seccion?: string;
@@ -7,16 +7,16 @@ interface UnderConstructionProps {
 
 export default function UnderConstruction({ seccion = "esta sección" }: UnderConstructionProps) {
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.icon}>🚧</Text>
-        <Text style={styles.title}>Próximamente</Text>
-        <Text style={styles.subtitle}>
-          Estamos trabajando para habilitar <Text style={styles.highlight}>{seccion}</Text>. 
-          ¡Pronto estará disponible!
-        </Text>
+      <View style={styles.container}>
+          <View style={styles.card}>
+              <Text style={styles.icon}>🚧</Text>
+              <Text style={styles.title}>Próximamente</Text>
+              <Text style={styles.subtitle}>
+                  Estamos trabajando para habilitar <Text style={styles.highlight}>{seccion}</Text>.
+                  ¡Pronto estará disponible!
+              </Text>
+          </View>
       </View>
-    </View>
   );
 }
 

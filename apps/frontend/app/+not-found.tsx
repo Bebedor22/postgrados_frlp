@@ -1,22 +1,22 @@
-import { Link, Stack } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import {Link, Stack} from 'expo-router';
+import {StyleSheet, Text, View} from 'react-native';
 
 export default function NotFoundScreen() {
   return (
-    <>
-      <Stack.Screen options={{ title: 'Página no encontrada', headerShown: false }} />
-      <View style={styles.container}>
-        <Text style={styles.icon}>🕵️‍♂️</Text>
-        <Text style={styles.title}>¡Epa! Error 404</Text>
-        <Text style={styles.subtitle}>
-          Parece que te fuiste del mapa. La página que buscás no existe o fue movida.
-        </Text>
-        
-        <Link href="/" style={styles.button}>
-          <Text style={styles.buttonText}>Volver al inicio</Text>
-        </Link>
-      </View>
-    </>
+      <>
+          <Stack.Screen options={{title: 'Página no encontrada', headerShown: false}}/>
+          <View style={styles.container}>
+              <Text style={styles.icon}>🕵️‍♂️</Text>
+              <Text style={styles.title}>¡Epa! Error 404</Text>
+              <Text style={styles.subtitle}>
+                  Parece que te fuiste del mapa. La página que buscás no existe o fue movida.
+              </Text>
+
+              <Link href="/" style={styles.button}>
+                  <Text style={styles.buttonText}>Volver al inicio</Text>
+              </Link>
+          </View>
+      </>
   );
 }
 

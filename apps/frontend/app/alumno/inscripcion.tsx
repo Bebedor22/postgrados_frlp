@@ -1,20 +1,11 @@
-import { StyleSheet, Text, View } from "react-native";
-import { AppLayout } from "../../src/components/layout/AppLayout";
-
-const alumnoNav = [
-  { icon: "🕮", label: "Mi Avance", to: "/alumno/miAvance", group: "Cursadas" },
-  { icon: "📋", label: "Estado de trámite", to: "/alumno/estadoDeTramite", group: "Gestión" },
-  { icon: "📋", label: "Inscripción", to: "/alumno/inscripcion", group: "Gestión" },
-];
+import {StyleSheet, Text, View} from "react-native";
 
 export default function Inscripcion() {
   return (
-    <AppLayout portalTitle="Portal Alumno" navItems={alumnoNav}>
       <View style={styles.container}>
         <Text style={styles.title}>Inscripción</Text>
         <Text style={styles.subtitle}>Sección disponible próximamente.</Text>
       </View>
-    </AppLayout>
   );
 }
 

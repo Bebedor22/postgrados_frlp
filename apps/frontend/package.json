@@ -15,9 +15,11 @@
     "expo-notifications": "~57.0.12",
     "expo-router": "~57.0.2",
     "expo-status-bar": "~57.0.1",
+    "lucide-react-native": "^1.33.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.0",
+    "react-native-svg": "^15.15.5",
     "react-native-web": "^0.21.0"
   },
   "private": true,

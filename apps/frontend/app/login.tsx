@@ -1,6 +1,7 @@
-import { Link, useRouter } from "expo-router";
-import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
+import {Link, useRouter} from "expo-router";
+import {useState} from "react";
+import {Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View} from "react-native";
+import {GraduationCap} from "lucide-react-native";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -24,6 +25,17 @@ export default function LoginScreen() {
       return;
     }
     console.log("Iniciando sesión con:", email, password, "| Rol seleccionado:", rol);
+
+      // Navegación según el rol seleccionado
+      if (rol === "Aspirante / Estudiante") {
+          router.replace("/alumno/miAvance");
+      } else if (rol === "Docente") {
+          router.replace("/docente/misCursos");
+      } else {
+          // Para otros roles (Conducción / Administrador) por ahora no hay home específica definida en el issue
+          // pero podríamos mandarlos a docente o mostrar un aviso.
+          alert("Rol no implementado en esta demo. Seleccioná Alumno o Docente.");
+      }
   };
 
   return (
@@ -41,7 +53,7 @@ export default function LoginScreen() {
         )}
 
         <View style={styles.iconContainer}>
-          <Text style={styles.iconText}>🎓</Text>
+            <GraduationCap size={40} color="white"/>
         </View>
         <Text style={styles.leftTitle}>Sistema de Gestión de Posgrado</Text>
         <Text style={styles.leftSubtitle}>

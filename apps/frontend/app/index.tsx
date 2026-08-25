@@ -1,7 +1,7 @@
-import { Link, useRouter } from "expo-router";
-import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
-import { scheduleTestNotification } from "../src/lib/notifications";
+import {Link, useRouter} from "expo-router";
+import {useState} from "react";
+import {Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View} from "react-native";
+import {scheduleTestNotification} from "../src/lib/notifications";
 
 
 export default function LoginScreen() {
@@ -257,23 +257,23 @@ const styles = StyleSheet.create({
 
 export function HomeScreen() {
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.kicker}>Sistema de Posgrado</Text>
-        <Text style={styles.title}>Wizard de Ingresantes</Text>
-        <Text style={styles.subtitle}>
+      <View style={styles2.container}>
+          <View style={styles2.card}>
+              <Text style={styles2.kicker}>Sistema de Posgrado</Text>
+              <Text style={styles2.title}>Wizard de Ingresantes</Text>
+              <Text style={styles2.subtitle}>
           Base Expo + React Native para la inscripción pública. Login y portal principal van aparte.
         </Text>
 
-        <View style={styles.actions}>
+              <View style={styles2.actions}>
           <Link href="/wizard/step-1" asChild>
-            <Pressable style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Comenzar inscripción</Text>
+              <Pressable style={styles2.primaryButton}>
+                  <Text style={styles2.primaryButtonText}>Comenzar inscripción</Text>
             </Pressable>
           </Link>
 
-          <Pressable style={styles.secondaryButton} onPress={scheduleTestNotification}>
-            <Text style={styles.secondaryButtonText}>Probar notificación</Text>
+                  <Pressable style={styles2.secondaryButton} onPress={scheduleTestNotification}>
+                      <Text style={styles2.secondaryButtonText}>Probar notificación</Text>
           </Pressable>
         </View>
       </View>

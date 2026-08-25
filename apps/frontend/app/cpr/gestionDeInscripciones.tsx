@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { AppLayout } from "../../src/components/layout/AppLayout";
+import {Fragment, useState} from "react";
+import {ScrollView, StyleSheet} from "react-native";
+import {AlertTriangle} from "lucide-react-native";
+import {AppLayout} from "../../src/components/layout/AppLayout";
 
 type LegajoEstado = "Completo" | "Incompleto" | "En revisión";
 
@@ -166,7 +167,7 @@ export default function GestionInscripciones() {
                 const st = LEGAJO_MAP[a.legajo];
                 const isDetail = detalle === a.id;
                 return (
-                  <>
+                    <Fragment key={a.id}>
                     <tr
                       style={{ borderBottom: "1px solid #f3f4f6", backgroundColor: isDetail ? "#f9fafb" : "white" }}
                       onMouseEnter={ev => { if (!isDetail) (ev.currentTarget as HTMLElement).style.backgroundColor = "#f9fafb"; }}
@@ -202,7 +203,7 @@ export default function GestionInscripciones() {
                             </div>
                             {a.documentosPendientes && a.documentosPendientes.length > 0 && (
                               <div style={{ display: "flex", gap: "8px", alignItems: "flex-start", padding: "10px 14px", backgroundColor: "#fef2f2", border: "1px solid #fecaca", borderRadius: "6px", marginBottom: "12px", fontSize: "13px", color: "#dc2626" }}>
-                                <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: "1px" }} />
+                                  <AlertTriangle size={14} style={{flexShrink: 0, marginTop: 1}}/>
                                 <div>
                                   <strong>Documentos con observaciones:</strong>{" "}
                                   {a.documentosPendientes.join(", ")}
@@ -231,7 +232,7 @@ export default function GestionInscripciones() {
                         </td>
                       </tr>
                     )}
-                  </>
+                    </Fragment>
                 );
               })}
             </tbody>

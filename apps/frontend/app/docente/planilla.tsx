@@ -1,7 +1,6 @@
-import { useState } from "react";
-import { Link } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { AppLayout } from "../../src/components/layout/AppLayout";
+import {useState} from "react";
+import {Link} from "expo-router";
+import {Pressable, ScrollView, StyleSheet, Text, TextInput, View} from "react-native";
 
 const FECHAS = ["12/03", "19/03", "26/03", "02/04", "09/04", "16/04"];
 
@@ -20,11 +19,6 @@ const initialEstudiantes: EstudianteRow[] = [
   { id: 4, nombre: "Ramírez, Tomás",   dni: "33.117.222", asistencias: [false, true,  false, false, true,  false], calificacion: "4"  },
   { id: 5, nombre: "Silva, Valentina", dni: "30.222.333", asistencias: [true,  true,  true,  true,  true,  true ], calificacion: ""   },
   { id: 6, nombre: "Martínez, Diego",  dni: "27.543.210", asistencias: [true,  false, false, true,  false, true ], calificacion: "7"  },
-];
-
-const docenteNav = [
-  { icon: "🕮", label: "Mis Cursos", to: "/docente/misCursos", group: "Gestión Académica" },
-  { icon: "📋", label: "Planilla de Carga", to: "/docente/planilla", group: "Gestión Académica" },
 ];
 
 function calcPct(asistencias: boolean[]) {
@@ -63,7 +57,6 @@ export default function PlanillaDocente() {
   const handleGuardar = () => setSaved(true);
 
   return (
-    <AppLayout portalTitle="Portal Docente" navItems={docenteNav}>
       <ScrollView contentContainerStyle={styles.page}>
         {/* Seminar info bar */}
         <View style={styles.infoBar}>
@@ -176,7 +169,6 @@ export default function PlanillaDocente() {
           </View>
         </View>
       </ScrollView>
-    </AppLayout>
   );
 }
 

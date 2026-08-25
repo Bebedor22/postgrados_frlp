@@ -1,6 +1,7 @@
-import { useRouter } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { AppLayout } from "../../src/components/layout/AppLayout";
+import {useRouter} from "expo-router";
+import {Pressable, StyleSheet, Text, View} from "react-native";
+import {BookOpen, Calendar, ChevronRight, Users} from "lucide-react-native";
+import {PageHeader} from "../../src/components/layout/AppLayout";
 
 const cursosActivos = [
   {
@@ -40,11 +41,6 @@ const otrosCursos = [
   },
 ];
 
-const docenteNav = [
-  { icon: "🕮", label: "Mis Cursos", to: "/docente/misCursos", group: "Gestión Académica" },
-  { icon: "📋", label: "Planilla de Carga", to: "/docente/planilla", group: "Gestión Académica" },
-];
-
 function EstadoBadge({ estado }: { estado: string }) {
   const map: Record<string, string> = {
     Activo: "#16a34a",
@@ -60,30 +56,37 @@ export default function MisCursosScreen() {
   const router = useRouter();
 
   return (
-    <AppLayout portalTitle="Portal Docente" navItems={docenteNav}>
+      <>
+        <PageHeader title="Mis Cursos"/>
       <View style={styles.page}>
         <View style={styles.legendRow}>
           <View style={styles.legendDot} />
           <Text style={styles.legendText}>Cursos en curso</Text>
         </View>
-
         {cursosActivos.map((curso) => (
           <View key={curso.id} style={styles.cursoCard}>
             <View style={styles.cursoIcon}>
-              <Text style={styles.cursoIconActive}>🕮</Text>
+              <BookOpen size={22} color="white"/>
             </View>
             <View style={styles.cursoInfo}>
               <Text style={styles.cursoNombre}>{curso.nombre}</Text>
               <View style={styles.cursoMetaRow}>
-                <Text style={styles.cursoMeta}>
-                  📆 Cohorte {curso.cohorte} · {curso.cuatrimestre}
-                </Text>
-                <Text style={styles.cursoMeta}>👥 {curso.estudiantes} estudiantes</Text>
+                <View style={styles.metaItem}>
+                  <Calendar size={14} color="#6b7280"/>
+                  <Text style={styles.cursoMeta}>
+                    Cohorte {curso.cohorte} · {curso.cuatrimestre}
+                  </Text>
+                </View>
+                <View style={styles.metaItem}>
+                  <Users size={14} color="#6b7280"/>
+                  <Text style={styles.cursoMeta}>{curso.estudiantes} estudiantes</Text>
+                </View>
                 <EstadoBadge estado={curso.estado} />
               </View>
             </View>
             <Pressable style={styles.primaryButton} onPress={() => router.push("/docente/planilla")}>
-              <Text style={styles.primaryButtonText}>Gestionar ›</Text>
+              <Text style={styles.primaryButtonText}>Gestionar</Text>
+              <ChevronRight size={14} color="white"/>
             </Pressable>
           </View>
         ))}
@@ -96,30 +99,37 @@ export default function MisCursosScreen() {
               style={[styles.otroCursoRow, i < otrosCursos.length - 1 && styles.otroCursoRowBorder]}
             >
               <View style={styles.otroCursoIcon}>
-                <Text style={styles.otroCursoIconText}>🕮</Text>
+                <BookOpen size={18} color="#6b7280"/>
               </View>
               <View style={styles.cursoInfo}>
                 <Text style={styles.otroCursoNombre}>{curso.nombre}</Text>
                 <View style={styles.cursoMetaRow}>
-                  <Text style={styles.cursoMetaSmall}>
-                    📆 Cohorte {curso.cohorte} · {curso.cuatrimestre}
-                  </Text>
+                  <View style={styles.metaItem}>
+                    <Calendar size={12} color="#6b7280"/>
+                    <Text style={styles.cursoMetaSmall}>
+                      Cohorte {curso.cohorte} · {curso.cuatrimestre}
+                    </Text>
+                  </View>
                   {curso.estudiantes !== null && (
-                    <Text style={styles.cursoMetaSmall}>👥 {curso.estudiantes} estudiantes</Text>
+                      <View style={styles.metaItem}>
+                        <Users size={12} color="#6b7280"/>
+                        <Text style={styles.cursoMetaSmall}>{curso.estudiantes} estudiantes</Text>
+                      </View>
                   )}
                   <EstadoBadge estado={curso.estado} />
                 </View>
               </View>
               {curso.estado === "Finalizado" && (
                 <Pressable style={styles.secondaryButton}>
-                  <Text style={styles.secondaryButtonText}>Ver actas ›</Text>
+                  <Text style={styles.secondaryButtonText}>Ver actas</Text>
+                  <ChevronRight size={12} color="#374151"/>
                 </Pressable>
               )}
             </View>
           ))}
         </View>
       </View>
-    </AppLayout>
+      </>
   );
 }
 
@@ -188,6 +198,11 @@ const styles = StyleSheet.create({
     gap: 16,
     alignItems: "center",
   },
+  metaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
   cursoMeta: {
     fontSize: 12,
     color: "#6b7280",
@@ -197,11 +212,13 @@ const styles = StyleSheet.create({
     color: "#6b7280",
   },
   primaryButton: {
+    flexDirection: "row",
     paddingVertical: 9,
     paddingHorizontal: 18,
     backgroundColor: "#0d2035",
     borderRadius: 6,
     alignItems: "center",
+    gap: 6,
   },
   primaryButtonText: {
     color: "#ffffff",
@@ -250,12 +267,15 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   secondaryButton: {
+    flexDirection: "row",
     paddingVertical: 7,
     paddingHorizontal: 14,
     backgroundColor: "#ffffff",
     borderWidth: 1,
     borderColor: "#d1d5db",
     borderRadius: 5,
+    alignItems: "center",
+    gap: 4,
   },
   secondaryButtonText: {
     color: "#374151",
