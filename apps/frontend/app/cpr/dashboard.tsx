@@ -72,7 +72,7 @@ const navItems = [
   { icon: "📋", label: "Gestión de Inscripciones", to: "/cpr/gestionDeInscripciones", group: "Portal Conducción" },
   { icon: "🔍", label: "Buscador de Estudiantes", to: "/cpr/buscadorEstudiantes", group: "Portal Conducción" },
   { icon: "📑", label: "Reportes y Exportación", to: "/cpr/dashboard", group: "Portal Conducción" },
-  { icon: "📄", label: "Gestión de Tesis", to: "/cpr/dashboard", group: "Portal Conducción" },
+  { icon: "📄", label: "Gestión de Tesis", to: "/cpr/gestionDeTesis", group: "Portal Conducción" },
   { icon: "⏳", label: "Alertas y Vencimientos", to: "/cpr/dashboard", group: "Portal Conducción" },
   { icon: "⚙️", label: "Configuración", to: "/cpr/dashboard", group: "Portal Conducción" },
 ];

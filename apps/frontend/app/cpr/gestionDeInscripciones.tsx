@@ -31,7 +31,6 @@ const LEGAJO_MAP: Record<LegajoEstado, { icon: React.ReactNode; color: string; b
   "En revisión": { icon: "",         color: "#d97706", bg: "#fefce8" },
 };
 
-
 const navItems = [
   { icon: "📊", label: "Dashboard", to: "/cpr/dashboard", group: "Portal Conducción" },
   { icon: "📋", label: "Gestión de Inscripciones", to: "/cpr/gestionDeInscripciones", group: "Portal Conducción" },
