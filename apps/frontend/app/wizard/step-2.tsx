@@ -30,35 +30,35 @@ export default function Step2Screen() {
       <View style={wizardStyles.twoColumns}>
         <View style={halfOrFull}>
           <Text style={wizardStyles.label}>Teléfono celular</Text>
-          <TextInput placeholder="+54 9 11 1234-5678" keyboardType="phone-pad" style={wizardStyles.input} />
+          <TextInput placeholder="+54 9 11 1234-5678" placeholderTextColor="#9ca3af" keyboardType="phone-pad" style={wizardStyles.input} />
         </View>
         <View style={halfOrFull}>
           <Text style={wizardStyles.label}>Correo electrónico</Text>
-          <TextInput placeholder="ejemplo@email.com" keyboardType="email-address" style={wizardStyles.input} />
+          <TextInput placeholder="ejemplo@email.com" placeholderTextColor="#9ca3af" keyboardType="email-address" style={wizardStyles.input} />
         </View>
         <View style={halfOrFull}>
           <Text style={wizardStyles.label}>Provincia</Text>
-          <TextInput placeholder="Buenos Aires" style={wizardStyles.input} />
+          <TextInput placeholder="Buenos Aires" placeholderTextColor="#9ca3af" style={wizardStyles.input} />
         </View>
         <View style={halfOrFull}>
           <Text style={wizardStyles.label}>Localidad</Text>
-          <TextInput placeholder="La Plata" style={wizardStyles.input} />
+          <TextInput placeholder="La Plata" placeholderTextColor="#9ca3af" style={wizardStyles.input} />
         </View>
         <View style={halfOrFull}>
           <Text style={wizardStyles.label}>Calle</Text>
-          <TextInput placeholder="Av. 7" style={wizardStyles.input} />
+          <TextInput placeholder="Av. 7" placeholderTextColor="#9ca3af" style={wizardStyles.input} />
         </View>
         <View style={halfOrFull}>
           <Text style={wizardStyles.label}>Número</Text>
-          <TextInput placeholder="1234" keyboardType="numeric" style={wizardStyles.input} />
+          <TextInput placeholder="1234" placeholderTextColor="#9ca3af" keyboardType="numeric" style={wizardStyles.input} />
         </View>
         <View style={halfOrFull}>
           <Text style={wizardStyles.label}>Piso / Depto (opcional)</Text>
-          <TextInput placeholder="2° B" style={wizardStyles.input} />
+          <TextInput placeholder="2° B" placeholderTextColor="#9ca3af" style={wizardStyles.input} />
         </View>
         <View style={halfOrFull}>
           <Text style={wizardStyles.label}>Código Postal</Text>
-          <TextInput placeholder="1900" keyboardType="numeric" style={wizardStyles.input} />
+          <TextInput placeholder="1900" placeholderTextColor="#9ca3af" keyboardType="numeric" style={wizardStyles.input} />
         </View>
       </View>
     </WizardShell>

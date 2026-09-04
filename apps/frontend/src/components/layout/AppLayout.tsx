@@ -53,6 +53,7 @@ export function AppLayout({ portalTitle, navItems, children }: AppLayoutProps) {
       </View>
 
       <View style={styles.body}>
+        {/* Renderizado condicional: El sidebar completo desaparece en la vista móvil (isCompact) */}
         {!isCompact && (
           <ScrollView style={styles.sidebar} contentContainerStyle={styles.sidebarContent}>
             <Text style={styles.portalTitle}>{portalTitle}</Text>
@@ -63,20 +64,24 @@ export function AppLayout({ portalTitle, navItems, children }: AppLayoutProps) {
                 {(groups[groupKey] ?? []).map((item) => {
                   const isActive = pathname === item.to;
                   return (
-                      <Link key={`${groupKey}-${item.label}-${item.to}`} href={item.to} asChild>
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.navItem,
-                          isActive && styles.navItemActive,
-                          pressed && styles.navItemPressed,
-                        ]}
-                      >
-                        {typeof item.icon === "string" ? (
-                            <Text style={styles.navIcon}>{item.icon}</Text>
-                        ) : (
-                            <View style={styles.navIcon}>{item.icon}</View>
+                    <Link key={`${groupKey}-${item.label}-${item.to}`} href={item.to as any} asChild>
+                      <Pressable>
+                        {({ pressed }) => (
+                          <View
+                            style={[
+                              styles.navItem,
+                              isActive && styles.navItemActive,
+                              pressed && styles.navItemPressed,
+                            ]}
+                          >
+                            {typeof item.icon === "string" ? (
+                                <Text style={styles.navIcon}>{item.icon}</Text>
+                            ) : (
+                                <View style={styles.navIcon}>{item.icon}</View>
+                            )}
+                            <Text style={styles.navLabel}>{item.label}</Text>
+                          </View>
                         )}
-                        <Text style={styles.navLabel}>{item.label}</Text>
                       </Pressable>
                     </Link>
                   );
@@ -204,6 +209,7 @@ const styles = StyleSheet.create({
   navIcon: {
     width: 18,
     alignItems: "center",
+    justifyContent: "center",
   },
   navLabel: {
     color: "#ffffff",
