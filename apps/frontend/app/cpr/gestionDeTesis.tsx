@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { AppLayout } from "../../src/components/layout/AppLayout";
 
 type TesisEstado = "En curso" | "Aprobada" | "Pendiente de aprobación";
@@ -37,7 +37,15 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box", backgroundColor: "white",
 };
 
+// Estilo unificado para TODOS los labels (negrita)
+const labelStyle: React.CSSProperties = {
+  display: "block", fontSize: "12px", fontWeight: 700, marginBottom: "5px", color: "#111827" 
+};
+
 function EmptyForm({ onClose }: { onClose: () => void }) {
+  const { width } = useWindowDimensions();
+  const isMobile = width < 640;
+
   return (
     <div style={{
       backgroundColor: "#f9fafb",
@@ -53,9 +61,9 @@ function EmptyForm({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "16px" }}>
         <div style={{ gridColumn: "1 / -1" }}>
-          <label style={{ display: "block", fontSize: "12px", fontWeight: 500, marginBottom: "5px", color: "#374151" }}>Estudiante *</label>
+          <label style={labelStyle}>Estudiante *</label>
           <select style={{ ...inputStyle, cursor: "pointer" }}>
             <option value="">Seleccionar estudiante...</option>
             {initialData.filter(d => d.titulo === "").map(d => (
@@ -66,30 +74,30 @@ function EmptyForm({ onClose }: { onClose: () => void }) {
         </div>
 
         <div style={{ gridColumn: "1 / -1" }}>
-          <label style={{ display: "block", fontSize: "12px", fontWeight: 500, marginBottom: "5px", color: "#374151" }}>Título de la tesis / TFI *</label>
+          <label style={labelStyle}>Título de la tesis / TFI *</label>
           <input type="text" placeholder="Título completo del trabajo..." style={inputStyle} />
         </div>
 
         <div>
-          <label style={{ display: "block", fontSize: "12px", fontWeight: 500, marginBottom: "5px", color: "#374151" }}>Director/a *</label>
+          <label style={labelStyle}>Director/a *</label>
           <input type="text" placeholder="Nombre y apellido del director/a" style={inputStyle} />
         </div>
         <div>
-          <label style={{ display: "block", fontSize: "12px", fontWeight: 500, marginBottom: "5px", color: "#374151" }}>Co-director/a (opcional)</label>
+          <label style={labelStyle}>Co-director/a (opcional)</label>
           <input type="text" placeholder="Nombre y apellido" style={inputStyle} />
         </div>
 
         <div>
-          <label style={{ display: "block", fontSize: "12px", fontWeight: 500, marginBottom: "5px", color: "#374151" }}>N° de Resolución</label>
+          <label style={labelStyle}>N° de Resolución</label>
           <input type="text" placeholder="RES-2025-000" style={inputStyle} />
         </div>
         <div>
-          <label style={{ display: "block", fontSize: "12px", fontWeight: 500, marginBottom: "5px", color: "#374151" }}>Fecha de aprobación</label>
+          <label style={labelStyle}>Fecha de aprobación</label>
           <input type="date" style={inputStyle} />
         </div>
 
         <div>
-          <label style={{ display: "block", fontSize: "12px", fontWeight: 500, marginBottom: "5px", color: "#374151" }}>Estado *</label>
+          <label style={labelStyle}>Estado *</label>
           <select style={{ ...inputStyle, cursor: "pointer" }}>
             <option>En curso</option>
             <option>Pendiente de aprobación</option>
@@ -126,6 +134,9 @@ export default function GestionTesis() {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [filtroEstado, setFiltroEstado] = useState("Todos");
 
+  const { width } = useWindowDimensions();
+  const isMobile = width < 640;
+
   const filtered = filtroEstado === "Todos" ? records : records.filter(r => r.estado === filtroEstado);
 
   return (
@@ -133,15 +144,15 @@ export default function GestionTesis() {
     <ScrollView contentContainerStyle={styles.page}>
       <div style={{ padding: "20px 24px" }}>
 
-        {/* Stats bar */}
-        <div style={{ display: "flex", gap: "12px", marginBottom: "20px" }}>
+        {/* Stats bar con flexWrap */}
+        <div style={{ display: "flex", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
           {[
             { label: "Total registradas", value: records.length, color: "#0d2035" },
             { label: "En curso", value: records.filter(r => r.estado === "En curso").length, color: "#d97706" },
             { label: "Pendiente aprobación", value: records.filter(r => r.estado === "Pendiente de aprobación").length, color: "#2563eb" },
             { label: "Aprobadas", value: records.filter(r => r.estado === "Aprobada").length, color: "#16a34a" },
           ].map(s => (
-            <div key={s.label} style={{ flex: 1, backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "14px 18px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <div key={s.label} style={{ flex: 1, minWidth: "140px", backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "14px 18px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
               <div style={{ fontSize: "11px", color: "#6b7280", marginBottom: "4px" }}>{s.label}</div>
               <div style={{ fontSize: "24px", fontWeight: 700, color: s.color }}>{s.value}</div>
             </div>
@@ -151,9 +162,9 @@ export default function GestionTesis() {
         {/* New form */}
         {showForm && <EmptyForm onClose={() => setShowForm(false)} />}
 
-        {/* Toolbar */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-          <div style={{ display: "flex", gap: "8px" }}>
+        {/* Toolbar con flexWrap para los filtros */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px", flexWrap: "wrap", gap: "12px" }}>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
             {["Todos", "En curso", "Pendiente de aprobación", "Aprobada"].map(opt => (
               <button
                 key={opt}
@@ -204,6 +215,7 @@ export default function GestionTesis() {
                       {r.estudiante} · {r.carrera}
                     </div>
                   </div>
+                  {/* Ocultar el estado en pantallas super chiquitas si molesta mucho o dejarlo fijo */}
                   <span style={{ fontSize: "12px", fontWeight: 600, color: st.color, backgroundColor: st.bg, padding: "3px 10px", borderRadius: "12px", flexShrink: 0 }}>
                     {r.estado}
                   </span>
@@ -213,7 +225,7 @@ export default function GestionTesis() {
                 {/* Expanded detail */}
                 {isOpen && (
                   <div style={{ padding: "0 20px 18px", borderTop: "1px solid #f3f4f6" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px", paddingTop: "14px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr", gap: "16px", paddingTop: "14px" }}>
                       {[
                         { label: "Director/a",      value: r.director || "—" },
                         { label: "Co-director/a",   value: r.codirector || "—" },
