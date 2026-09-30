@@ -7,6 +7,8 @@ import { scheduleTestNotification } from "../../src/lib/notifications";
 export default function Step4Screen() {
   const [scheduled, setScheduled] = useState(false);
   const [solicitaBeca, setSolicitaBeca] = useState(false);
+  // Nuevo estado para controlar qué beca está seleccionada (null, 'parcial' o 'completa')
+  const [tipoBeca, setTipoBeca] = useState<string | null>(null);
 
   const docs = [
     "DNI (frente y dorso)",
@@ -56,7 +58,11 @@ export default function Step4Screen() {
         
         <Pressable 
           style={wizardStyles.radioItem} 
-          onPress={() => setSolicitaBeca(!solicitaBeca)}
+          onPress={() => {
+            setSolicitaBeca(!solicitaBeca);
+            // Si desmarca la casilla principal, limpiamos la selección de la beca
+            if (solicitaBeca) setTipoBeca(null); 
+          }}
         >
           <View style={[wizardStyles.checkbox, solicitaBeca && { backgroundColor: "#0d2035", borderColor: "#0d2035" }]}>
             {solicitaBeca && <Text style={{ color: "white", fontSize: 10, textAlign: "center" }}>✓</Text>}
@@ -68,24 +74,39 @@ export default function Step4Screen() {
           <View style={{ marginTop: 16, paddingLeft: 24 }}>
             <Text style={wizardStyles.label}>Tipo de beca solicitada:</Text>
             <View style={{ gap: 10, marginBottom: 16 }}>
-              <View style={[wizardStyles.section, { backgroundColor: "white", borderWidth: 1, borderColor: "#d1d5db", padding: 12 }]}>
+              
+              {/* Opción Beca Parcial */}
+              <Pressable 
+                style={[wizardStyles.section, { backgroundColor: "white", borderWidth: 1, borderColor: "#d1d5db", padding: 12 }]}
+                onPress={() => setTipoBeca('parcial')}
+              >
                 <View style={wizardStyles.radioItem}>
-                  <View style={wizardStyles.radioCircle} />
+                  <View style={[wizardStyles.radioCircle, tipoBeca === 'parcial' && wizardStyles.radioCircleSelected]}>
+                    {tipoBeca === 'parcial' && <View style={wizardStyles.radioInner} />}
+                  </View>
                   <View>
                     <Text style={{ fontSize: 13, fontWeight: "600" }}>Beca parcial (30%)</Text>
                     <Text style={{ fontSize: 12, color: "#6b7280" }}>Descuento sobre el arancel</Text>
                   </View>
                 </View>
-              </View>
-              <View style={[wizardStyles.section, { backgroundColor: "white", borderWidth: 1, borderColor: "#d1d5db", padding: 12 }]}>
+              </Pressable>
+
+              {/* Opción Beca Completa */}
+              <Pressable 
+                style={[wizardStyles.section, { backgroundColor: "white", borderWidth: 1, borderColor: "#d1d5db", padding: 12 }]}
+                onPress={() => setTipoBeca('completa')}
+              >
                 <View style={wizardStyles.radioItem}>
-                  <View style={wizardStyles.radioCircle} />
+                  <View style={[wizardStyles.radioCircle, tipoBeca === 'completa' && wizardStyles.radioCircleSelected]}>
+                    {tipoBeca === 'completa' && <View style={wizardStyles.radioInner} />}
+                  </View>
                   <View>
                     <Text style={{ fontSize: 13, fontWeight: "600" }}>Beca completa (100%)</Text>
                     <Text style={{ fontSize: 12, color: "#6b7280" }}>Exención total del arancel</Text>
                   </View>
                 </View>
-              </View>
+              </Pressable>
+
             </View>
 
             <Text style={wizardStyles.label}>Formulario de solicitud de beca:</Text>
@@ -101,9 +122,12 @@ export default function Step4Screen() {
 
       <View style={[wizardStyles.section, { marginTop: 20 }]}>
         <Text style={wizardStyles.sectionTitle}>Prueba de Notificaciones</Text>
-        <Text style={wizardStyles.dropzoneSubtext}>
+        
+        {/* Se agregó marginBottom de 16px para separar el texto del botón */}
+        <Text style={[wizardStyles.dropzoneSubtext, { marginBottom: 8 }]}>
           Podés probar el sistema de notificaciones local antes de finalizar.
         </Text>
+        
         <Pressable
           style={wizardStyles.secondaryButton}
           onPress={async () => {

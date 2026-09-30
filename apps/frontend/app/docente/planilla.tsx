@@ -13,10 +13,10 @@ type EstudianteRow = {
 };
 
 const initialEstudiantes: EstudianteRow[] = [
-  { id: 1, nombre: "Pérez, Sofía",     dni: "34.567.890", asistencias: [true,  true,  true,  true,  false, true ], calificacion: "9"  },
-  { id: 2, nombre: "García, Laura",    dni: "31.234.567", asistencias: [true,  true,  false, true,  true,  true ], calificacion: "8"  },
-  { id: 3, nombre: "López, Martín",    dni: "28.876.543", asistencias: [true,  false, true,  false, true,  false], calificacion: ""   },
-  { id: 4, nombre: "Ramírez, Tomás",   dni: "33.117.222", asistencias: [false, true,  false, false, true,  false], calificacion: "4"  },
+  { id: 1, nombre: "Pérez, Sofía",    dni: "34.567.890", asistencias: [true,  true,  true,  true,  false, true ], calificacion: "9"  },
+  { id: 2, nombre: "García, Laura",   dni: "31.234.567", asistencias: [true,  true,  false, true,  true,  true ], calificacion: "8"  },
+  { id: 3, nombre: "López, Martín",   dni: "28.876.543", asistencias: [true,  false, true,  false, true,  false], calificacion: ""   },
+  { id: 4, nombre: "Ramírez, Tomás",  dni: "33.117.222", asistencias: [false, true,  false, false, true,  false], calificacion: "4"  },
   { id: 5, nombre: "Silva, Valentina", dni: "30.222.333", asistencias: [true,  true,  true,  true,  true,  true ], calificacion: ""   },
   { id: 6, nombre: "Martínez, Diego",  dni: "27.543.210", asistencias: [true,  false, false, true,  false, true ], calificacion: "7"  },
 ];
@@ -82,76 +82,81 @@ export default function PlanillaDocente() {
 
         {/* Table */}
         <View style={styles.tableCard}>
-          <View style={[styles.headerRow, styles.rowBorder]}>
-            <View style={styles.colStudent}>
-              <Text style={styles.headerText}>Estudiante</Text>
-            </View>
-            {FECHAS.map((f) => (
-              <View key={f} style={styles.colFecha}>
-                <Text style={styles.headerTextSmall}>{f}</Text>
-              </View>
-            ))}
-            <View style={styles.colPct}>
-              <Text style={styles.headerText}>% Asist.</Text>
-            </View>
-            <View style={styles.colCal}>
-              <Text style={styles.headerText}>Calificación</Text>
-            </View>
-            <View style={styles.colEstado}>
-              <Text style={styles.headerText}>Estado</Text>
-            </View>
-          </View>
-
-          {rows.map((row) => {
-            const pct = calcPct(row.asistencias);
-            const estado = autoEstado(pct, row.calificacion);
-            return (
-              <View key={row.id} style={[styles.bodyRow, styles.rowBorder]}>
+          {/* ScrollView horizontal agregado aquí */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+            <View style={styles.tableInner}>
+              <View style={[styles.headerRow, styles.rowBorder]}>
                 <View style={styles.colStudent}>
-                  <Text style={styles.studentNombre}>{row.nombre}</Text>
-                  <Text style={styles.studentDni}>{row.dni}</Text>
+                  <Text style={styles.headerText}>Estudiante</Text>
                 </View>
-
-                {row.asistencias.map((present, fi) => (
-                  <View key={fi} style={styles.colFecha}>
-                    <Pressable
-                      onPress={() => toggleAsistencia(row.id, fi)}
-                      hitSlop={8}
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked: present }}
-                    >
-                      <View style={[styles.checkbox, present && styles.checkboxChecked]}>
-                        {present && <Text style={styles.checkMark}>✓</Text>}
-                      </View>
-                    </Pressable>
+                {FECHAS.map((f) => (
+                  <View key={f} style={styles.colFecha}>
+                    <Text style={styles.headerTextSmall}>{f}</Text>
                   </View>
                 ))}
-
                 <View style={styles.colPct}>
-                  <Text style={[styles.pctText, { color: pct >= 75 ? "#16a34a" : "#ef4444" }]}>
-                    {pct}%
-                  </Text>
+                  <Text style={styles.headerText}>% Asist.</Text>
                 </View>
-
                 <View style={styles.colCal}>
-                  <TextInput
-                    style={styles.calInput}
-                    keyboardType="number-pad"
-                    maxLength={2}
-                    value={row.calificacion}
-                    onChangeText={(v) => setCalificacion(row.id, v)}
-                    placeholder="—"
-                  />
+                  <Text style={styles.headerText}>Calificación</Text>
                 </View>
-
                 <View style={styles.colEstado}>
-                  <Text style={[styles.estadoBadge, { color: estado.color, backgroundColor: `${estado.color}18` }]}>
-                    {estado.label}
-                  </Text>
+                  <Text style={styles.headerText}>Estado</Text>
                 </View>
               </View>
-            );
-          })}
+
+              {rows.map((row) => {
+                const pct = calcPct(row.asistencias);
+                const estado = autoEstado(pct, row.calificacion);
+                return (
+                  <View key={row.id} style={[styles.bodyRow, styles.rowBorder]}>
+                    <View style={styles.colStudent}>
+                      <Text style={styles.studentNombre}>{row.nombre}</Text>
+                      <Text style={styles.studentDni}>{row.dni}</Text>
+                    </View>
+
+                    {row.asistencias.map((present, fi) => (
+                      <View key={fi} style={styles.colFecha}>
+                        <Pressable
+                          onPress={() => toggleAsistencia(row.id, fi)}
+                          hitSlop={8}
+                          accessibilityRole="checkbox"
+                          accessibilityState={{ checked: present }}
+                        >
+                          <View style={[styles.checkbox, present && styles.checkboxChecked]}>
+                            {present && <Text style={styles.checkMark}>✓</Text>}
+                          </View>
+                        </Pressable>
+                      </View>
+                    ))}
+
+                    <View style={styles.colPct}>
+                      <Text style={[styles.pctText, { color: pct >= 75 ? "#16a34a" : "#ef4444" }]}>
+                        {pct}%
+                      </Text>
+                    </View>
+
+                    <View style={styles.colCal}>
+                      <TextInput
+                        style={styles.calInput}
+                        keyboardType="number-pad"
+                        maxLength={2}
+                        value={row.calificacion}
+                        onChangeText={(v) => setCalificacion(row.id, v)}
+                        placeholder="—"
+                      />
+                    </View>
+
+                    <View style={styles.colEstado}>
+                      <Text style={[styles.estadoBadge, { color: estado.color, backgroundColor: `${estado.color}18` }]}>
+                        {estado.label}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </ScrollView>
         </View>
 
         {/* Footer actions */}
@@ -219,6 +224,10 @@ const styles = StyleSheet.create({
     borderColor: "#e5e7eb",
     borderRadius: 8,
     overflow: "hidden",
+  },
+  /* Nueva clase para asegurar el ancho mínimo de la tabla */
+  tableInner: {
+    minWidth: 750,
   },
   headerRow: {
     flexDirection: "row",
