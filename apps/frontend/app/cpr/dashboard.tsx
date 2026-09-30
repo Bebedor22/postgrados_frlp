@@ -265,25 +265,27 @@ export default function Dashboard() {
 
           <View style={styles.panel}>
             <Text style={styles.panelTitle}>Resumen por carrera</Text>
-            <View style={styles.table}>
-              <View style={[styles.tableRow, styles.tableHeader]}>
-                {["Carrera", "Inscriptos", "Cursando", "Graduados", "Desgran.", "Tesis"].map((column, index) => (
-                    <Text key={column} style={[styles.tableHeaderText, index === 0 && styles.careerCell]}>
-                      {column}
-                    </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+              <View style={styles.table}>
+                <View style={[styles.tableRow, styles.tableHeader]}>
+                  {["Carrera", "Inscriptos", "Cursando", "Graduados", "Desgran.", "Tesis"].map((column, index) => (
+                      <Text key={column} style={[styles.tableHeaderText, index === 0 && styles.careerCell]}>
+                        {column}
+                      </Text>
+                  ))}
+                </View>
+                {resumenCarreras.map((row) => (
+                    <View key={row.carrera} style={styles.tableRow}>
+                      <Text style={[styles.tableCell, styles.careerCell]}>{row.carrera}</Text>
+                      <Text style={styles.tableCell}>{row.inscriptos}</Text>
+                      <Text style={styles.tableCell}>{row.cursando}</Text>
+                      <Text style={styles.tableCell}>{row.graduados}</Text>
+                      <Text style={styles.tableCell}>{row.desgranamiento}</Text>
+                      <Text style={styles.tableCell}>{row.tesis}</Text>
+                    </View>
                 ))}
               </View>
-              {resumenCarreras.map((row) => (
-                  <View key={row.carrera} style={styles.tableRow}>
-                    <Text style={[styles.tableCell, styles.careerCell]}>{row.carrera}</Text>
-                    <Text style={styles.tableCell}>{row.inscriptos}</Text>
-                    <Text style={styles.tableCell}>{row.cursando}</Text>
-                    <Text style={styles.tableCell}>{row.graduados}</Text>
-                    <Text style={styles.tableCell}>{row.desgranamiento}</Text>
-                    <Text style={styles.tableCell}>{row.tesis}</Text>
-                  </View>
-              ))}
-            </View>
+            </ScrollView>
           </View>
         </ScrollView>
     </AppLayout>
@@ -438,6 +440,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 12,
+    marginTop: -20, // CORRECCIÓN: Sube las etiquetas de los años hacia la línea
   },
   axisLabel: {
     color: "#6b7280",
@@ -449,6 +452,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 24,
+    flexWrap: "wrap", // CORRECCIÓN: Permite que la leyenda baje si no hay espacio
   },
   donutWrap: {
     width: 150,
@@ -488,6 +492,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   table: {
+    minWidth: 700, // CORRECCIÓN: Ancho mínimo para habilitar el scroll horizontal
+    width: "100%",
     borderWidth: 1,
     borderColor: "#f3f4f6",
     borderRadius: 6,
