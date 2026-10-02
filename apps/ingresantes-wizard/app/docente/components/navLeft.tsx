@@ -116,23 +116,26 @@ function Layout({ portalTitle, navItems, onLogout, children }: LayoutProps) {
                   </div>
                 )}
                 {(groups[groupKey] ?? []).map((item) => (
-				  <Link href="{item.to}" style={({ isActive }) => ({
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    width: "calc(100% - 16px)",
-                    margin: "1px 8px",
-                    padding: "9px 10px",
-                    backgroundColor: isActive ? ACTIVE_BG : "transparent",
-                    borderRadius: "6px",
-                    color: "white",
-                    textDecoration: "none",
-                    fontSize: "13px",
-                  })}
-			      >
-                    {item.icon}
-                    {item.label}
-				  </Link>
+				  <Link
+            key={item.to}
+            href={item.to}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              width: "calc(100% - 16px)",
+              margin: "1px 8px",
+              padding: "9px 10px",
+              backgroundColor: "transparent",
+              borderRadius: "6px",
+              color: "white",
+              textDecoration: "none",
+              fontSize: "13px",
+            }}
+            >
+            {item.icon}
+            {item.label}
+          </Link>
                 ))}
               </div>
             ))}
@@ -174,24 +177,47 @@ export function PageHeader({ title, action }: PageHeaderProps) {
 
 
 
-export function Marco({children}) {
+export function Marco({ children }) {
   const router = useRouter();
 
   const handleLogout = () => {
-    logout();
-    navigate("/", { replace: true });
+    router.replace("/");
   };
 
   const navItems = [
-    { icon: "🕮",      label: "Mis Cursos",          href: "/docente/misCursos",          group: "Gestión Académica" },
-    { icon: "📋", label: "Planilla de Carga",   to: "/docente/planilla",         group: "Gestión Académica" },
-    { icon: "🔔",          label: "Notificaciones",       to: "/docente/notificaciones",   group: "Gestión Académica" },
-    { icon: "$",    label: "Recibos de Sueldo",    to: "/docente/recibos",          group: "RRHH" },
+    {
+      icon: "🕮",
+      label: "Mis Cursos",
+      to: "/docente/misCursos",
+      group: "Gestión Académica",
+    },
+    {
+      icon: "📋",
+      label: "Planilla de Carga",
+      to: "/docente/planilla",
+      group: "Gestión Académica",
+    },
+    {
+      icon: "🔔",
+      label: "Notificaciones",
+      to: "/docente/notificaciones",
+      group: "Gestión Académica",
+    },
+    {
+      icon: "$",
+      label: "Recibos de Sueldo",
+      to: "/docente/recibos",
+      group: "RRHH",
+    },
   ];
 
   return (
-    <Layout portalTitle="Portal Docente" navItems={navItems} >
-		{children}
-	</Layout>
+    <Layout
+      portalTitle="Portal Docente"
+      navItems={navItems}
+      onLogout={handleLogout}
+    >
+      {children}
+    </Layout>
   );
 }
