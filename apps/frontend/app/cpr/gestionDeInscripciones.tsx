@@ -116,14 +116,14 @@ export default function GestionInscripciones() {
         </div>
 
         {/* KPI row */}
-        <div style={{ display: "flex", gap: "12px", marginBottom: "20px" }}>
+        <div style={{ display: "flex", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
           {[
             { label: "Total aspirantes",  value: stats.total,       color: "#0d2035" },
             { label: "Legajo completo",   value: stats.completos,    color: "#16a34a" },
             { label: "En revisión",       value: stats.revision,     color: "#d97706" },
             { label: "Incompleto",        value: stats.incompletos,  color: "#dc2626" },
           ].map(k => (
-            <div key={k.label} style={{ flex: 1, backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "14px 18px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <div key={k.label} style={{ flex: 1, minWidth: "120px", backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "14px 18px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
               <div style={{ fontSize: "11px", color: "#6b7280", marginBottom: "4px" }}>{k.label}</div>
               <div style={{ fontSize: "24px", fontWeight: 700, color: k.color }}>{k.value}</div>
             </div>
@@ -133,8 +133,8 @@ export default function GestionInscripciones() {
         {/* Filters */}
         <div style={{ display: "flex", gap: "12px", marginBottom: "14px", flexWrap: "wrap" }}>
           {[
-            { label: "Carrera",        value: filtroCarrera, options: carreras,                                                          set: setFiltroCarrera },
-            { label: "Cohorte",        value: filtroCohorte, options: cohortes,                                                          set: setFiltroCohorte },
+            { label: "Carrera",        value: filtroCarrera, options: carreras,                                                  set: setFiltroCarrera },
+            { label: "Cohorte",        value: filtroCohorte, options: cohortes,                                                  set: setFiltroCohorte },
             { label: "Estado legajo",  value: filtroLegajo,  options: ["Todos", "Completo", "En revisión", "Incompleto"],                 set: setFiltroLegajo  },
           ].map(f => (
             <div key={f.label}>
@@ -152,91 +152,98 @@ export default function GestionInscripciones() {
 
         {/* Table */}
         <div style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #e5e7eb", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ backgroundColor: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                {["Nombre y Apellido", "DNI", "Carrera", "Cohorte", "Fecha inscripción", "Estado legajo", "Acciones"].map(col => (
-                  <th key={col} style={{ padding: "10px 16px", textAlign: "left", fontSize: "12px", fontWeight: 600, color: "#6b7280", whiteSpace: "nowrap" }}>
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((a, i) => {
-                const st = LEGAJO_MAP[a.legajo];
-                const isDetail = detalle === a.id;
-                return (
-                    <Fragment key={a.id}>
-                    <tr
-                      style={{ borderBottom: "1px solid #f3f4f6", backgroundColor: isDetail ? "#f9fafb" : "white" }}
-                      onMouseEnter={ev => { if (!isDetail) (ev.currentTarget as HTMLElement).style.backgroundColor = "#f9fafb"; }}
-                      onMouseLeave={ev => { if (!isDetail) (ev.currentTarget as HTMLElement).style.backgroundColor = "white"; }}
-                    >
-                      <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: 500, color: "#111" }}>{a.nombre}</td>
-                      <td style={{ padding: "12px 16px", fontSize: "13px", color: "#6b7280" }}>{a.dni}</td>
-                      <td style={{ padding: "12px 16px", fontSize: "13px", color: "#374151" }}>{a.carrera}</td>
-                      <td style={{ padding: "12px 16px", fontSize: "13px", color: "#6b7280" }}>{a.cohorte}</td>
-                      <td style={{ padding: "12px 16px", fontSize: "13px", color: "#6b7280" }}>{a.fechaInscripcion}</td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "12px", fontWeight: 600, color: st.color, backgroundColor: st.bg, padding: "3px 10px", borderRadius: "12px" }}>
-                          {st.icon} {a.legajo}
-                        </span>
-                      </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <button
-                          onClick={() => setDetalle(isDetail ? null : a.id)}
-                          style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", display: "flex", alignItems: "center" }}
-                          title="Ver legajo"
+          {/* Implementación del scroll horizontal */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+            <div style={{ minWidth: 800, width: "100%" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+                    {["Nombre y Apellido", "DNI", "Carrera", "Cohorte", "Fecha inscripción", "Estado legajo", "Acciones"].map(col => (
+                      <th key={col} style={{ padding: "10px 16px", textAlign: "left", fontSize: "12px", fontWeight: 600, color: "#6b7280", whiteSpace: "nowrap" }}>
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((a, i) => {
+                    const st = LEGAJO_MAP[a.legajo];
+                    const isDetail = detalle === a.id;
+                    return (
+                        <Fragment key={a.id}>
+                        <tr
+                          style={{ borderBottom: "1px solid #f3f4f6", backgroundColor: isDetail ? "#f9fafb" : "white" }}
+                          onMouseEnter={ev => { if (!isDetail) (ev.currentTarget as HTMLElement).style.backgroundColor = "#f9fafb"; }}
+                          onMouseLeave={ev => { if (!isDetail) (ev.currentTarget as HTMLElement).style.backgroundColor = "white"; }}
                         >
-                        </button>
-                      </td>
-                    </tr>
+                          <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: 500, color: "#111" }}>{a.nombre}</td>
+                          <td style={{ padding: "12px 16px", fontSize: "13px", color: "#6b7280" }}>{a.dni}</td>
+                          <td style={{ padding: "12px 16px", fontSize: "13px", color: "#374151" }}>{a.carrera}</td>
+                          <td style={{ padding: "12px 16px", fontSize: "13px", color: "#6b7280" }}>{a.cohorte}</td>
+                          <td style={{ padding: "12px 16px", fontSize: "13px", color: "#6b7280" }}>{a.fechaInscripcion}</td>
+                          <td style={{ padding: "12px 16px" }}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "12px", fontWeight: 600, color: st.color, backgroundColor: st.bg, padding: "3px 10px", borderRadius: "12px", whiteSpace: "nowrap" }}>
+                              {st.icon} {a.legajo}
+                            </span>
+                          </td>
+                          <td style={{ padding: "12px 16px" }}>
+                            <button
+                              onClick={() => setDetalle(isDetail ? null : a.id)}
+                              style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", display: "flex", alignItems: "center" }}
+                              title="Ver legajo"
+                            >
+                              {/* Texto o ícono de acciones, en el código original estaba vacío, agregué "Ver detalles" como fallback */}
+                              <span style={{fontSize: "13px", color: "#3b82f6", fontWeight: 500}}>Ver detalles</span>
+                            </button>
+                          </td>
+                        </tr>
 
-                    {/* Inline detail */}
-                    {isDetail && (
-                      <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
-                        <td colSpan={7} style={{ padding: "0 16px 16px" }}>
-                          <div style={{ backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "6px", padding: "16px 20px" }}>
-                            <div style={{ fontSize: "13px", fontWeight: 600, color: "#374151", marginBottom: "10px" }}>
-                              Legajo de {a.nombre}
-                            </div>
-                            {a.documentosPendientes && a.documentosPendientes.length > 0 && (
-                              <div style={{ display: "flex", gap: "8px", alignItems: "flex-start", padding: "10px 14px", backgroundColor: "#fef2f2", border: "1px solid #fecaca", borderRadius: "6px", marginBottom: "12px", fontSize: "13px", color: "#dc2626" }}>
-                                  <AlertTriangle size={14} style={{flexShrink: 0, marginTop: 1}}/>
-                                <div>
-                                  <strong>Documentos con observaciones:</strong>{" "}
-                                  {a.documentosPendientes.join(", ")}
+                        {/* Inline detail */}
+                        {isDetail && (
+                          <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
+                            <td colSpan={7} style={{ padding: "0 16px 16px" }}>
+                              <div style={{ backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "6px", padding: "16px 20px" }}>
+                                <div style={{ fontSize: "13px", fontWeight: 600, color: "#374151", marginBottom: "10px" }}>
+                                  Legajo de {a.nombre}
+                                </div>
+                                {a.documentosPendientes && a.documentosPendientes.length > 0 && (
+                                  <div style={{ display: "flex", gap: "8px", alignItems: "flex-start", padding: "10px 14px", backgroundColor: "#fef2f2", border: "1px solid #fecaca", borderRadius: "6px", marginBottom: "12px", fontSize: "13px", color: "#dc2626" }}>
+                                      <AlertTriangle size={14} style={{flexShrink: 0, marginTop: 1}}/>
+                                    <div>
+                                      <strong>Documentos con observaciones:</strong>{" "}
+                                      {a.documentosPendientes.join(", ")}
+                                    </div>
+                                  </div>
+                                )}
+                                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                                  {a.legajo !== "Completo" && (
+                                    <button style={{ padding: "7px 14px", backgroundColor: "#0d2035", color: "white", border: "none", borderRadius: "5px", fontSize: "12px", cursor: "pointer", fontWeight: 500 }}>
+                                      Enviar recordatorio al aspirante
+                                    </button>
+                                  )}
+                                  {a.legajo === "Completo" && (
+                                    <button style={{ padding: "7px 14px", backgroundColor: "#2d7a65", color: "white", border: "none", borderRadius: "5px", fontSize: "12px", cursor: "pointer", fontWeight: 500 }}>
+                                      Aprobar e incorporar como estudiante
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => setDetalle(null)}
+                                    style={{ padding: "7px 14px", backgroundColor: "white", color: "#374151", border: "1px solid #d1d5db", borderRadius: "5px", fontSize: "12px", cursor: "pointer" }}
+                                  >
+                                    Cerrar
+                                  </button>
                                 </div>
                               </div>
-                            )}
-                            <div style={{ display: "flex", gap: "8px" }}>
-                              {a.legajo !== "Completo" && (
-                                <button style={{ padding: "7px 14px", backgroundColor: "#0d2035", color: "white", border: "none", borderRadius: "5px", fontSize: "12px", cursor: "pointer", fontWeight: 500 }}>
-                                  Enviar recordatorio al aspirante
-                                </button>
-                              )}
-                              {a.legajo === "Completo" && (
-                                <button style={{ padding: "7px 14px", backgroundColor: "#2d7a65", color: "white", border: "none", borderRadius: "5px", fontSize: "12px", cursor: "pointer", fontWeight: 500 }}>
-                                  Aprobar e incorporar como estudiante
-                                </button>
-                              )}
-                              <button
-                                onClick={() => setDetalle(null)}
-                                style={{ padding: "7px 14px", backgroundColor: "white", color: "#374151", border: "1px solid #d1d5db", borderRadius: "5px", fontSize: "12px", cursor: "pointer" }}
-                              >
-                                Cerrar
-                              </button>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                    </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+                            </td>
+                          </tr>
+                        )}
+                        </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </ScrollView>
 
           <div style={{ padding: "12px 16px", borderTop: "1px solid #f3f4f6", backgroundColor: "#fafafa", fontSize: "12px", color: "#6b7280" }}>
             Mostrando {filtered.length} de {aspirantes.length} aspirantes

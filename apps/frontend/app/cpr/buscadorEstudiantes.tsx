@@ -40,12 +40,23 @@ const navItems = [
   { icon: "⚙️", label: "Configuración", to: "/cpr/dashboard", group: "Portal Conducción" },
 ];
 
+// Función auxiliar para quitar acentos y pasar a minúsculas
+const normalizeText = (text: string) => {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+};
+
 export default function BuscadorEstudiantes() {
   const [query, setQuery] = useState("");
 
-  const filtered = estudiantes.filter(
-    (e) => e.nombre.toLowerCase().includes(query.toLowerCase()) || e.dni.includes(query)
-  );
+  const filtered = estudiantes.filter((e) => {
+    const searchNormalized = normalizeText(query);
+    const nombreNormalized = normalizeText(e.nombre);
+    
+    return nombreNormalized.includes(searchNormalized) || e.dni.includes(query);
+  });
 
   return (
     <AppLayout portalTitle="Portal Alumno" navItems={navItems}>
@@ -67,49 +78,56 @@ export default function BuscadorEstudiantes() {
           </button>
         </div>
 
-        {/* Table */}
+        {/* Table Container */}
         <div style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #e5e7eb", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ backgroundColor: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                {["Estudiante", "DNI", "Cohorte", "Carrera", "% Avance", "Semáforo", "Estado Legajo", "Acciones"].map((col) => (
-                  <th key={col} style={{ padding: "10px 16px", textAlign: "left", fontSize: "12px", fontWeight: 600, color: "#6b7280", whiteSpace: "nowrap" }}>{col}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((e, i) => {
-                const legajo = LEGAJO[e.legajo] ?? { color: "#374151", icon: "" };
-                return (
-                  <tr
-                    key={i}
-                    style={{ borderBottom: "1px solid #f3f4f6" }}
-                    onMouseEnter={(ev) => ((ev.currentTarget as HTMLElement).style.backgroundColor = "#f9fafb")}
-                    onMouseLeave={(ev) => ((ev.currentTarget as HTMLElement).style.backgroundColor = "white")}
-                  >
-                    <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: 500, color: "#111" }}>{e.nombre}</td>
-                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#6b7280" }}>{e.dni}</td>
-                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#6b7280" }}>{e.cohorte}</td>
-                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#374151" }}>{e.carrera}</td>
-                    <td style={{ padding: "12px 16px" }}><ProgressBar value={e.avance} /></td>
-                    <td style={{ padding: "12px 16px" }}>
-                      <div style={{ width: "14px", height: "14px", borderRadius: "50%", backgroundColor: SEMAFORO[e.semaforo], margin: "0 auto" }} />
-                    </td>
-                    <td style={{ padding: "12px 16px" }}>
-                      <span style={{ fontSize: "13px", color: legajo.color, fontWeight: 500 }}>{legajo.icon} {e.legajo}</span>
-                    </td>
-                    <td style={{ padding: "12px 16px" }}>
-                      <button style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", display: "flex", alignItems: "center" }}>
-                      </button>
-                    </td>
+          
+          {/* ScrollView horizontal aplicado solo a la tabla */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+            <div style={{ minWidth: 800, width: "100%" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+                    {["Estudiante", "DNI", "Cohorte", "Carrera", "% Avance", "Semáforo", "Estado Legajo", "Acciones"].map((col) => (
+                      <th key={col} style={{ padding: "10px 16px", textAlign: "left", fontSize: "12px", fontWeight: 600, color: "#6b7280", whiteSpace: "nowrap" }}>{col}</th>
+                    ))}
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {filtered.map((e, i) => {
+                    const legajo = LEGAJO[e.legajo] ?? { color: "#374151", icon: "" };
+                    return (
+                      <tr
+                        key={i}
+                        style={{ borderBottom: "1px solid #f3f4f6" }}
+                        onMouseEnter={(ev) => ((ev.currentTarget as HTMLElement).style.backgroundColor = "#f9fafb")}
+                        onMouseLeave={(ev) => ((ev.currentTarget as HTMLElement).style.backgroundColor = "white")}
+                      >
+                        <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: 500, color: "#111", whiteSpace: "nowrap" }}>{e.nombre}</td>
+                        <td style={{ padding: "12px 16px", fontSize: "13px", color: "#6b7280" }}>{e.dni}</td>
+                        <td style={{ padding: "12px 16px", fontSize: "13px", color: "#6b7280" }}>{e.cohorte}</td>
+                        <td style={{ padding: "12px 16px", fontSize: "13px", color: "#374151", whiteSpace: "nowrap" }}>{e.carrera}</td>
+                        <td style={{ padding: "12px 16px" }}><ProgressBar value={e.avance} /></td>
+                        <td style={{ padding: "12px 16px" }}>
+                          <div style={{ width: "14px", height: "14px", borderRadius: "50%", backgroundColor: SEMAFORO[e.semaforo], margin: "0 auto" }} />
+                        </td>
+                        <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
+                          <span style={{ fontSize: "13px", color: legajo.color, fontWeight: 500 }}>{legajo.icon} {e.legajo}</span>
+                        </td>
+                        <td style={{ padding: "12px 16px" }}>
+                          <button style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", display: "flex", alignItems: "center" }}>
+                            <span style={{fontSize: "13px", color: "#3b82f6", fontWeight: 500}}>Ver</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </ScrollView>
 
-          {/* Pagination */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderTop: "1px solid #f3f4f6", backgroundColor: "#fafafa" }}>
+          {/* Pagination (Fuera del ScrollView para que no se desplace hacia los lados) */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderTop: "1px solid #f3f4f6", backgroundColor: "#fafafa", flexWrap: "wrap", gap: "10px" }}>
             <span style={{ fontSize: "12px", color: "#6b7280" }}>Mostrando 1 a {filtered.length} de {filtered.length} estudiantes</span>
             <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
               <button style={{ padding: "5px 8px", border: "1px solid #e5e7eb", borderRadius: "4px", background: "white", cursor: "pointer", color: "#6b7280" }}>{"<"}</button>
@@ -119,6 +137,7 @@ export default function BuscadorEstudiantes() {
               <button style={{ padding: "5px 8px", border: "1px solid #e5e7eb", borderRadius: "4px", background: "white", cursor: "pointer", color: "#6b7280" }}>{">"}</button>
             </div>
           </div>
+
         </div>
       </div>
     </ScrollView>
