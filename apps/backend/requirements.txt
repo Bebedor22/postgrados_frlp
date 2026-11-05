@@ -4,5 +4,6 @@ uvicorn[standard]>=0.30
 sqlalchemy[asyncio]>=2.0,<2.2
 asyncpg>=0.29
 pydantic>=2.7,<3.0
+pydantic-settings>=2.3
 pyjwt>=2.8
 python-multipart>=0.0.9

@@ -1,0 +1,5 @@
+# Variables de entorno locales (contienen secretos: nunca se suben)
+.env
+
+# Entornos virtuales de Python creados por error en la raíz
+.venv/

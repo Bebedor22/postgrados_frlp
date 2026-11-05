@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.shared.config import get_settings
 from src.shared.exceptions import LegajoNoEncontrado
 
 # Importar routers de todos los módulos
@@ -21,10 +22,10 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
-# Configurar CORS
+# Configurar CORS: solo los orígenes definidos en CORS_ORIGINS (por defecto, Expo web)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción, especificar dominios permitidos
+    allow_origins=get_settings().lista_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
