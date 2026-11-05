@@ -1,30 +1,33 @@
-from sqlalchemy.future import select
-from sqlalchemy.orm import Session
 import uuid
-from typing import Optional, List
+from typing import Optional
 
-from ...inscripcion.domain.entities import Aspirante, Legajo, EstadoLegajo, TipoCarrera
-from ...inscripcion.domain.value_objects import DNI, Email
-from ...inscripcion.domain.repo import LegajoRepository
-from ...inscripcion.domain.estados import validar_transicion
-from ...shared.exceptions import LegajoNoEncontrado
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.inscripcion.domain.entities import EstadoLegajo, Legajo, TipoCarrera
+from src.inscripcion.domain.repo import LegajoRepository
+from src.inscripcion.domain.value_objects import DNI, Email
+from src.inscripcion.infrastructure.orm_models import AuditoriaLegajoModel, LegajoModel
+from src.shared.exceptions import LegajoNoEncontrado
+
+
+def _a_uuid(valor) -> uuid.UUID:
+    """Convierte un id recibido como texto a UUID (asyncpg no acepta str en columnas UUID)."""
+    return valor if isinstance(valor, uuid.UUID) else uuid.UUID(str(valor))
 
 
 class PostgresLegajoRepository(LegajoRepository):
-    """Implementación concreta de LegajoRepository usando SQLAlchemy."""
+    """Implementación concreta de LegajoRepository usando SQLAlchemy async."""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self._session = session
 
     async def guardar(self, legajo: Legajo) -> Legajo:
-        """Guardar un legajo en la base de datos."""
-        from ...inscripcion.infrastructure.orm_models import LegajoModel, CohorteModel
-
-        # Convertir dominio a modelo
+        """Guardar un legajo nuevo en la base de datos."""
         legajo_model = LegajoModel(
-            id=legajo.id,
+            id=_a_uuid(legajo.id),
             numero_legajo=legajo.numero_legajo,
-            cohorte_id=legajo.cohorte_id,
+            cohorte_id=_a_uuid(legajo.cohorte_id),
             dni=str(legajo.dni),
             apellido=legajo.apellido,
             nombre=legajo.nombre,
@@ -38,135 +41,91 @@ class PostgresLegajoRepository(LegajoRepository):
             semaforo=legajo.semaforo,
             semaforo_manual=legajo.semaforo_manual,
         )
-
         self._session.add(legajo_model)
         await self._session.flush()
-        return legajo
+        return self._modelo_a_dominio(legajo_model)
 
     async def obtener_por_dni(self, dni: str) -> Optional[Legajo]:
-        """Obtener un legajo por su DNI. Único en cohorte activa."""
-        from ...inscripcion.infrastructure.orm_models import LegajoModel
+        """Obtener el primer legajo con ese DNI (o None)."""
+        result = await self._session.execute(select(LegajoModel).where(LegajoModel.dni == dni))
+        modelo = result.scalars().first()
+        return self._modelo_a_dominio(modelo) if modelo else None
 
-        result = await self._session.execute(
-            select(LegajoModel).where(LegajoModel.dni == dni)
-        )
-        modelo = result.scalar_one_or_none()
-        if modelo is None:
-            return None
+    async def obtener_por_id(self, legajo_id: str) -> Legajo:
+        """Obtener un legajo por su ID. Lanza LegajoNoEncontrado si no existe."""
+        modelo = await self._obtener_modelo(legajo_id)
         return self._modelo_a_dominio(modelo)
 
-    async def obtener_por_id(self, legajo_id: str) -> Optional[Legajo]:
-        """Obtener un legajo por su ID."""
-        from ...inscripcion.infrastructure.orm_models import LegajoModel
-
-        result = await self._session.execute(
-            select(LegajoModel).where(LegajoModel.id == legajo_id)
-        )
-        modelo = result.scalar_one_or_none()
-        if modelo is None:
-            raise LegajoNoEncontrado(legajo_id)
-        return self._modelo_a_dominio(modelo)
-
-    async def listar_por_cohorte_y_estado(
-            self, cohorte_id: str, estado: EstadoLegajo
-    ) -> list[Legajo]:
+    async def listar_por_cohorte_y_estado(self, cohorte_id: str, estado: EstadoLegajo) -> list[Legajo]:
         """Listar legajos de una cohorte con un estado específico."""
-        from ...inscripcion.infrastructure.orm_models import LegajoModel
-
         result = await self._session.execute(
             select(LegajoModel)
-            .where(LegajoModel.cohorte_id == cohorte_id)
+            .where(LegajoModel.cohorte_id == _a_uuid(cohorte_id))
             .where(LegajoModel.estado == estado.value)
         )
-        modelos = result.scalars().all()
-        return [self._modelo_a_dominio(m) for m in modelos]
+        return [self._modelo_a_dominio(m) for m in result.scalars().all()]
 
     async def listar_en_estado(self, estado: EstadoLegajo) -> list[Legajo]:
         """Listar todos los legajos en un estado dado."""
-        from ...inscripcion.infrastructure.orm_models import LegajoModel
-
-        result = await self._session.execute(
-            select(LegajoModel).where(LegajoModel.estado == estado.value)
-        )
-        modelos = result.scalars().all()
-        return [self._modelo_a_dominio(m) for m in modelos]
+        result = await self._session.execute(select(LegajoModel).where(LegajoModel.estado == estado.value))
+        return [self._modelo_a_dominio(m) for m in result.scalars().all()]
 
     async def actualizar_estado(
-            self, legajo_id: str, nuevo_estado: EstadoLegajo, comentario: str = None
+            self,
+            legajo_id: str,
+            nuevo_estado: EstadoLegajo,
+            comentario: Optional[str] = None,
+            usuario_email: Optional[str] = None,
     ) -> Legajo:
-        """Actualizar el estado de un legajo y registrar en auditoría."""
-        from ...inscripcion.infrastructure.orm_models import LegajoModel, AuditoriaLegajoModel
-
-        legajo_model = await self._session.get(LegajoModel, legajo_id)
-        if legajo_model is None:
-            raise LegajoNoEncontrado(legajo_id)
-
-        # Guardar estado anterior para auditoría
+        """Actualizar el estado de un legajo y registrar el cambio en la auditoría."""
+        legajo_model = await self._obtener_modelo(legajo_id)
         estado_anterior = legajo_model.estado
-
-        # Actualizar estado
         legajo_model.estado = nuevo_estado.value
 
-        # Registrar en auditoría (simplificado)
-        # En un sistema completo, estoiría un modelo separado con usuario, timestamp, etc.
-        from datetime import datetime
-        auditoria = AuditoriaLegajoModel(
-            id=uuid.uuid4(),
-            legajo_id=legajo_id,
-            estado_anterior=estado_anterior,
-            estado_nuevo=nuevo_estado.value,
-            comentario=comentario,
-            usuario_email="coordinador_sistema",  # Vendría del JWT en producción
-            created_at=datetime.now(),
+        self._session.add(
+            AuditoriaLegajoModel(
+                legajo_id=legajo_model.id,
+                estado_anterior=estado_anterior,
+                estado_nuevo=nuevo_estado.value,
+                comentario=comentario,
+                usuario_email=usuario_email,
+            )
         )
-        self._session.add(auditoria)
-
-        # Retornar al dominio
-        from ...inscripcion.domain.entities import Legajo as LegajoDom
-        return LegajoDom(
-            id=legajo_model.id,
-            numero_legajo=legajo_model.numero_legajo,
-            cohorte_id=legajo_model.cohorte_id,
-            dni=LegajoDom.dni.__class__(legajo_model.dni),
-            apellido=legajo_model.apellido,
-            nombre=legajo_model.nombre,
-            email=LegajoDom.email.__class__(legajo_model.email),
-            tipo_carrera=TipoCarrera(legajo_model.tipo_carrera),
-            solicita_beca=legajo_model.solicita_beca,
-            estado=EstadoLegajo(legajo_model.estado),
-            fecha_inscripcion=legajo_model.fecha_inscripcion,
-            fecha_activacion=legajo_model.fecha_activacion,
-            semaforo=legajo_model.semaforo,
-            semaforo_manual=legajo_model.semaforo_manual,
-        )
+        await self._session.flush()
+        return self._modelo_a_dominio(legajo_model)
 
     async def existe_dni_en_cohorte(self, dni: str, cohorte_id: str) -> bool:
         """Verificar si ya existe un aspirante con ese DNI en la cohorte."""
-        from ...inscripcion.infrastructure.orm_models import LegajoModel
-
         result = await self._session.execute(
-            select(LegajoModel)
+            select(LegajoModel.id)
             .where(LegajoModel.dni == dni)
-            .where(LegajoModel.cohorte_id == cohorte_id)
+            .where(LegajoModel.cohorte_id == _a_uuid(cohorte_id))
         )
-        modelo = result.scalar_one_or_none()
-        return modelo is not None
+        return result.first() is not None
 
-    def _modelo_a_dominio(self, modelo: object) -> Legajo:
-        """Convertir modelo SQLAlchemy a entidad de dominio."""
-        from ...inscripcion.domain.entities import Legajo, Aspirante, DNI, Email, TipoCarrera, EstadoLegajo
+    # ── Helpers privados ─────────────────────────────────────────────────────
 
-        dni_obj = DNI(modelo.dni)
-        email_obj = Email(modelo.email)
+    async def _obtener_modelo(self, legajo_id: str) -> LegajoModel:
+        try:
+            clave = _a_uuid(legajo_id)
+        except ValueError:
+            raise LegajoNoEncontrado(str(legajo_id))
+        modelo = await self._session.get(LegajoModel, clave)
+        if modelo is None:
+            raise LegajoNoEncontrado(str(legajo_id))
+        return modelo
 
+    @staticmethod
+    def _modelo_a_dominio(modelo: LegajoModel) -> Legajo:
+        """Convertir el modelo SQLAlchemy en la entidad de dominio."""
         return Legajo(
-            id=modelo.id,
+            id=str(modelo.id),
             numero_legajo=modelo.numero_legajo,
             cohorte_id=str(modelo.cohorte_id) if modelo.cohorte_id else "",
-            dni=dni_obj,
+            dni=DNI(modelo.dni),
             apellido=modelo.apellido,
             nombre=modelo.nombre,
-            email=email_obj,
+            email=Email(modelo.email),
             tipo_carrera=TipoCarrera(modelo.tipo_carrera),
             solicita_beca=modelo.solicita_beca,
             tipo_beca=modelo.tipo_beca,

@@ -1,3 +1,4 @@
+from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 import os
@@ -24,10 +25,19 @@ AsyncSessionLocal = async_sessionmaker(
 Base = declarative_base()
 
 
-async def get_db() -> AsyncSession:
-    """Dependency que provee una sesión de base de datos."""
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Dependency que provee una sesión de base de datos.
+
+    Confirma (commit) la transacción si el endpoint terminó bien y la
+    deshace (rollback) si se lanzó una excepción.
+    """
     async with AsyncSessionLocal() as session:
-        yield session
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 
 async def crear_todas_las_tablas():

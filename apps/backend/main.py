@@ -1,8 +1,10 @@
 from typing import Dict
-from fastapi import FastAPI
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.shared.database.connection import crear_todas_las_tablas, get_db
+from src.shared.exceptions import LegajoNoEncontrado
 
 # Importar routers de todos los módulos
 from src.inscripcion.presentation.router import router as router_inscripcion
@@ -55,6 +57,10 @@ app.include_router(
     tags=["Gestión Documental"],
 )
 
+@app.exception_handler(LegajoNoEncontrado)
+async def manejar_legajo_no_encontrado(request: Request, exc: LegajoNoEncontrado):
+    """Convierte la excepción de dominio en un 404 en lugar de un error 500."""
+    return JSONResponse(status_code=404, content={"error": exc.message})
 
 @app.on_event("startup")
 async def startup_event():
