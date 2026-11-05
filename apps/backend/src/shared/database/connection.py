@@ -1,15 +1,12 @@
+from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
-import os
 
-# Configuración de base de datos
-# En producción: DATABASE_URL=postgresql+asyncpg://usuario:password@host:puerto/db
-# Desarrollo: PostgreSQL en Docker (postgrado-postgres:5432)
+from src.shared.config import get_settings
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@localhost:5432/posgrado",
-)
+# La URL viene de la variable de entorno DATABASE_URL (ver src/shared/config.py).
+# Formato: postgresql+asyncpg://usuario:password@host:puerto/base
+DATABASE_URL = get_settings().database_url
 
 engine = create_async_engine(DATABASE_URL, echo=False, future=True)
 
@@ -24,10 +21,19 @@ AsyncSessionLocal = async_sessionmaker(
 Base = declarative_base()
 
 
-async def get_db() -> AsyncSession:
-    """Dependency que provee una sesión de base de datos."""
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Dependency que provee una sesión de base de datos.
+
+    Confirma (commit) la transacción si el endpoint terminó bien y la
+    deshace (rollback) si se lanzó una excepción.
+    """
     async with AsyncSessionLocal() as session:
-        yield session
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 
 async def crear_todas_las_tablas():

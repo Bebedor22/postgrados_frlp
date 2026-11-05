@@ -1,5 +1,5 @@
 from typing import Optional
-from .entities import Aspirante, Legajo, EstadoLegajo, TipoCarrera
+from .entities import Legajo, EstadoLegajo
 
 
 class LegajoRepository:
@@ -33,7 +33,11 @@ class LegajoRepository:
         raise NotImplementedError("Implementar en pg_repository.py")
 
     async def actualizar_estado(
-            self, legajo_id: str, nuevo_estado: EstadoLegajo, comentario: Optional[str] = None
+            self,
+            legajo_id: str,
+            nuevo_estado: EstadoLegajo,
+            comentario: Optional[str] = None,
+            usuario_email: Optional[str] = None,
     ) -> Legajo:
         """Actualizar el estado de un legajo y registrar en auditoría."""
         raise NotImplementedError("Implementar en pg_repository.py")
