@@ -47,6 +47,7 @@ class Legajo:
     email: "Email"
     tipo_carrera: "TipoCarrera"
     solicita_beca: bool
+    tipo_beca: Optional[str] = None
     estado: EstadoLegajo = EstadoLegajo.BORRADOR
     fecha_inscripcion: Optional[date] = None
     fecha_activacion: Optional[date] = None
@@ -77,10 +78,11 @@ class Legajo:
                 EstadoLegajo.BAJA,
         ):
             return False
-        # ACTIVO puede ir a GRADUADO (aprobación final) o RIESGO (módulo C detecta retraso)
+        # ACTIVO puede ir a GRADUADO (aprobación final) o BAJA.
+        # El riesgo académico no es un estado del legajo: lo indica el semáforo (Módulo C).
         if self.estado == EstadoLegajo.ACTIVO and nuevo_estado not in (
                 EstadoLegajo.GRADUADO,
-                EstadoLegajo.RIESGO,
+                EstadoLegajo.BAJA,
         ):
             return False
         return True

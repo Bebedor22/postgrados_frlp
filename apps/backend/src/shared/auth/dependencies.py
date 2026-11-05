@@ -1,6 +1,8 @@
+from typing import Any, Dict, Optional
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from src.shared.auth.jwt import decodificar_token, token_a_rol
+from src.shared.auth.jwt import decodificar_token
 
 security = HTTPBearer(auto_error=False)
 

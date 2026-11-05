@@ -42,7 +42,7 @@ def decodificar_token(
     try:
         payload = jwt.decode(token, secreto, algorithms=[JWT_ALGORITHM])
         return payload
-    except jwt.ExpiredError:
+    except jwt.ExpiredSignatureError:   # antes decía jwt.ExpiredError, que no existe
         raise ValueError("Token expirado")
     except jwt.InvalidTokenError:
         raise ValueError("Token inválido")
