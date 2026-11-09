@@ -58,7 +58,7 @@ app.include_router(
 app.include_router(
     router_inscripcion,
     prefix="/api/v1/legajos",
-    tags=["Legajos - Módulo Core"],
+    tags=["Legajos (conducción)"],
 )
 app.include_router(
     router_carga_academica,

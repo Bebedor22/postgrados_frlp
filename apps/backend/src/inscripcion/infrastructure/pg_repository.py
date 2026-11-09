@@ -2,12 +2,12 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.inscripcion.domain.entities import CambioDeEstado, EstadoLegajo, Legajo, TipoCarrera
 from src.inscripcion.domain.formulario import FormularioInscripcion
-from src.inscripcion.domain.repo import LegajoRepository
+from src.inscripcion.domain.repo import FiltrosLegajos, LegajoRepository
 from src.inscripcion.domain.value_objects import Email, crear_documento
 from src.inscripcion.infrastructure.orm_models import AuditoriaLegajoModel, DatosAspiranteModel, LegajoModel
 from src.shared.exceptions import LegajoNoEncontrado
@@ -192,6 +192,87 @@ class PostgresLegajoRepository(LegajoRepository):
             )
             for a in result.scalars().all()
         ]
+
+    # ── Bandeja y workflow del coordinador ───────────────────────────────────
+
+    async def buscar(self, filtros: FiltrosLegajos) -> tuple[list[Legajo], int]:
+        condiciones = []
+        if filtros.cohorte_id:
+            condiciones.append(LegajoModel.cohorte_id == _a_uuid(filtros.cohorte_id))
+        if filtros.carrera_id:
+            condiciones.append(LegajoModel.carrera_id == _a_uuid(filtros.carrera_id))
+        if filtros.estado:
+            condiciones.append(LegajoModel.estado == filtros.estado.value)
+        if filtros.texto:
+            patron = f"%{filtros.texto.strip()}%"
+            condiciones.append(
+                or_(
+                    LegajoModel.apellido.ilike(patron),
+                    LegajoModel.nombre.ilike(patron),
+                    LegajoModel.dni.ilike(patron),
+                    LegajoModel.email.ilike(patron),
+                    LegajoModel.numero_legajo.ilike(patron),
+                )
+            )
+
+        total = (
+            await self._session.execute(select(func.count()).select_from(LegajoModel).where(*condiciones))
+        ).scalar_one()
+        result = await self._session.execute(
+            select(LegajoModel)
+            .where(*condiciones)
+            .order_by(LegajoModel.apellido, LegajoModel.nombre)
+            .offset((filtros.pagina - 1) * filtros.por_pagina)
+            .limit(filtros.por_pagina)
+        )
+        return [self._modelo_a_dominio(m) for m in result.scalars().all()], total
+
+    async def contar_por_estado(self, cohorte_id: Optional[str] = None) -> dict[str, int]:
+        consulta = select(LegajoModel.estado, func.count()).group_by(LegajoModel.estado)
+        if cohorte_id:
+            consulta = consulta.where(LegajoModel.cohorte_id == _a_uuid(cohorte_id))
+        result = await self._session.execute(consulta)
+        return {estado: cantidad for estado, cantidad in result.all()}
+
+    async def siguiente_secuencial(self, prefijo: str) -> int:
+        result = await self._session.execute(
+            select(LegajoModel.numero_legajo).where(LegajoModel.numero_legajo.like(f"{prefijo}%"))
+        )
+        usados = [int(n[len(prefijo):]) for n in result.scalars().all() if n[len(prefijo):].isdigit()]
+        return max(usados, default=0) + 1
+
+    async def asignar_numero(self, legajo_id: str, numero_legajo: str) -> None:
+        legajo = await self._obtener_modelo(legajo_id)
+        legajo.numero_legajo = numero_legajo
+        await self._session.flush()
+
+    async def registrar_activacion(self, legajo_id: str, fecha: datetime) -> None:
+        legajo = await self._obtener_modelo(legajo_id)
+        legajo.fecha_activacion = fecha
+        await self._session.flush()
+
+    async def fecha_de_estado(self, legajo_id: str, estado: EstadoLegajo) -> Optional[datetime]:
+        result = await self._session.execute(
+            select(func.max(AuditoriaLegajoModel.created_at))
+            .where(AuditoriaLegajoModel.legajo_id == _a_uuid(legajo_id))
+            .where(AuditoriaLegajoModel.estado_nuevo == estado.value)
+        )
+        return result.scalar_one()
+
+    async def listar_en_estado_desde_antes_de(self, estado: EstadoLegajo, limite: datetime) -> list[Legajo]:
+        ingreso = (
+            select(AuditoriaLegajoModel.legajo_id, func.max(AuditoriaLegajoModel.created_at).label("fecha"))
+            .where(AuditoriaLegajoModel.estado_nuevo == estado.value)
+            .group_by(AuditoriaLegajoModel.legajo_id)
+            .subquery()
+        )
+        result = await self._session.execute(
+            select(LegajoModel)
+            .join(ingreso, ingreso.c.legajo_id == LegajoModel.id)
+            .where(LegajoModel.estado == estado.value)
+            .where(ingreso.c.fecha < limite)
+        )
+        return [self._modelo_a_dominio(m) for m in result.scalars().all()]
 
     # ── Helpers privados ─────────────────────────────────────────────────────
 

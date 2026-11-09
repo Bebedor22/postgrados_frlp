@@ -2,8 +2,6 @@
 
 No requieren usuario: el aspirante se identifica con el token de su link personal.
 """
-from dataclasses import asdict
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,12 +15,11 @@ from src.inscripcion.application.inscripcion_por_pasos import (
 )
 from src.inscripcion.domain.formulario import DatosInvalidos
 from src.inscripcion.infrastructure.pg_repository import PostgresLegajoRepository
+from src.inscripcion.presentation.presentadores import tramite_a_respuesta
 from src.inscripcion.presentation.schemas_inscripcion import (
-    CambioDeEstadoResponse,
     DatosFormulario,
     InicioInscripcion,
     InscripcionIniciadaResponse,
-    ProgresoResponse,
     TramiteResponse,
 )
 from src.oferta_academica.application.gestionar_cohortes import CohorteNoEncontrada
@@ -35,22 +32,7 @@ router = APIRouter()
 
 
 def _a_respuesta(tramite: Tramite) -> TramiteResponse:
-    formulario, legajo = tramite.formulario, tramite.legajo
-    return TramiteResponse(
-        legajo_id=legajo.id,
-        numero_legajo=legajo.numero_legajo,
-        estado=legajo.estado.value,
-        puede_editar=legajo.puede_editar_formulario(),
-        cohorte_id=legajo.cohorte_id,
-        carrera_id=legajo.carrera_id,
-        datos=asdict(formulario),
-        progreso=ProgresoResponse(
-            porcentaje=formulario.porcentaje_completo(),
-            completo=formulario.esta_completo(),
-            faltantes_por_paso=formulario.faltantes_por_paso(),
-        ),
-        historial=[CambioDeEstadoResponse(**asdict(c)) for c in tramite.historial],
-    )
+    return tramite_a_respuesta(tramite.legajo, tramite.formulario, tramite.historial)
 
 
 def _error_http(error: Exception) -> HTTPException:

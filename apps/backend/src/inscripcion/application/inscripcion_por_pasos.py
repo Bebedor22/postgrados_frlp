@@ -169,6 +169,7 @@ async def confirmar_inscripcion(token: str, repo: LegajoRepository) -> Tramite:
     comentario = "Inscripción enviada por el aspirante"
     if legajo.estado == EstadoLegajo.OBSERVADO:
         comentario = "Aspirante corrigió las observaciones y reenvió"
+    legajo.transicionar_a(EstadoLegajo.PENDIENTE)  # Valida el workflow del dominio
     await repo.actualizar_estado(
         legajo.id, EstadoLegajo.PENDIENTE, comentario=comentario, usuario_email=str(legajo.email)
     )
