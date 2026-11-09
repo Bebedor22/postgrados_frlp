@@ -19,6 +19,14 @@ class PostgresCarreraRepository:
         result = await self._session.execute(consulta)
         return [self._a_dominio(m) for m in result.scalars().all()]
 
+    async def obtener_por_id(self, carrera_id: str) -> Optional[Carrera]:
+        try:
+            clave = uuid.UUID(str(carrera_id))
+        except ValueError:
+            return None
+        modelo = await self._session.get(CarreraModel, clave)
+        return self._a_dominio(modelo) if modelo else None
+
     async def obtener_por_nombre(self, nombre: str) -> Optional[Carrera]:
         result = await self._session.execute(select(CarreraModel).where(CarreraModel.nombre == nombre))
         modelo = result.scalar_one_or_none()

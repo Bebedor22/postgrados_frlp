@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, UploadFile, File, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, Depends, UploadFile, File, BackgroundTasks
 from fastapi.responses import JSONResponse
 from typing import List, Optional
 from datetime import date
@@ -7,81 +7,13 @@ from src.shared.auth.dependencies import require_role_coordinador
 from src.shared.database.connection import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.inscripcion.application.inscribir_aspirante import inscribir_aspirante
 from src.inscripcion.application.aprobar_legajo import aprobar_legajo
 from src.inscripcion.application.observar_legajo import observar_legajo
 from src.inscripcion.application.verificar_reserva_vencida import verificar_reserva_vencida
 from src.inscripcion.domain.entities import EstadoLegajo, TipoCarrera
 from src.shared.exceptions import LegajoNoEncontrado
-from src.oferta_academica.application.gestionar_cohortes import CohorteNoEncontrada, verificar_cohorte_abierta
-from src.oferta_academica.domain.entities import ReglaDeNegocioViolada
-from src.oferta_academica.infrastructure.pg_repository import PostgresCohorteRepository
 
 router = APIRouter(tags=["Legajos - Módulo Core"])
-
-
-@router.post(
-    "/",
-    summary="Registro de aspirante (inscripción pública)",
-    description="Aspirante completa formulario de inscripción. Endpoint público, no requiere autenticación.",
-    tags=["Inscripción Pública"],
-)
-async def registro_aspirante(
-        id: str,
-        dni: str,
-        email: str,
-        nombre: str,
-        apellido: str,
-        tipo_carrera: str,
-        carrera_elegida: str,
-        motivacion: str,
-        solicita_beca: bool,
-        cohorte_id: str,
-        db: AsyncSession = Depends(get_db),
-):
-    """
-    Registro de nuevo aspirante.
-
-    Endpoint público: cualquier persona puede acceder para inscribirse.
-    Valida DNI, email y crea aspirante + legajo en estado BORRADOR.
-    """
-    # BR-009: solo se aceptan inscripciones en cohortes con la inscripción abierta
-    try:
-        await verificar_cohorte_abierta(cohorte_id, PostgresCohorteRepository(db))
-    except CohorteNoEncontrada:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Cohorte no encontrada")
-    except ReglaDeNegocioViolada as e:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(e))
-
-    aspirante, legajo, error = inscribir_aspirante(
-        id=id,
-        dni=dni,
-        email=email,
-        nombre=nombre,
-        apellido=apellido,
-        tipo_carrera=tipo_carrera,
-        carrera_elegida=carrera_elegida,
-        motivacion=motivacion,
-        solicita_beca=solicita_beca,
-        cohorte_id=cohorte_id,
-    )
-
-    if error:
-        return JSONResponse(status_code=400, content={"error": error})
-
-    from src.inscripcion.infrastructure.orm_models import LegajoModel
-    from src.inscripcion.infrastructure.pg_repository import PostgresLegajoRepository
-
-    repo = PostgresLegajoRepository(db)
-    legajo_grabado = await repo.guardar(legajo)
-
-    return {
-        "mensaje": "Inscripción completada exitosamente",
-        "legajo_id": legajo_grabado.id,
-        "numero_legajo": legajo_grabado.numero_legajo,
-        "estado": legajo_grabado.estado.value,
-        "mensaje_siguiente": "Adjuntar documentos requeridos (DNI, Título) para completar el legajo",
-    }
 
 
 @router.post(

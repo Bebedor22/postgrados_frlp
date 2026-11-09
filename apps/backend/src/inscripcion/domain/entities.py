@@ -35,6 +35,14 @@ class Aspirante:
         self.estado = nuevo_estado
         return self
 
+@dataclass
+class CambioDeEstado:
+    """Un registro del historial de estados de un legajo (tabla auditoria_legajos)."""
+
+    estado_anterior: Optional[str]
+    estado_nuevo: str
+    comentario: Optional[str]
+    fecha: date
 
 @dataclass
 class Legajo:
@@ -53,6 +61,12 @@ class Legajo:
     fecha_activacion: Optional[date] = None
     semaforo: str = "VERDE"
     semaforo_manual: bool = False
+    carrera_id: Optional[str] = None
+    tipo_documento: str = "DNI"
+
+    def puede_editar_formulario(self) -> bool:
+        """El aspirante solo modifica su formulario en BORRADOR u OBSERVADO."""
+        return self.estado in (EstadoLegajo.BORRADOR, EstadoLegajo.OBSERVADO)
 
     def puede_transicionar_a(self, nuevo_estado: EstadoLegajo) -> bool:
         """Reglas de transición de estado del legajo (BR-003, BR-005)."""

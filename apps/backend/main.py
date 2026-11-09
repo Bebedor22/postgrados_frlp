@@ -10,6 +10,7 @@ from src.shared.exceptions import LegajoNoEncontrado
 # Importar routers de todos los módulos
 from src.autenticacion.presentation.router import router as router_autenticacion
 from src.inscripcion.presentation.router import router as router_inscripcion
+from src.inscripcion.presentation.router_inscripcion_publica import router as router_inscripcion_publica
 from src.oferta_academica.presentation.router import router_carreras, router_cohortes
 from src.carga_academica.presentation.router import router as router_carga_academica
 from src.seguimiento_graduacion.presentation.router import router as router_seguimiento
@@ -48,6 +49,11 @@ app.include_router(
     router_cohortes,
     prefix="/api/v1/cohortes",
     tags=["Cohortes"],
+)
+app.include_router(
+    router_inscripcion_publica,
+    prefix="/api/v1/inscripciones",
+    tags=["Inscripción (aspirante)"],
 )
 app.include_router(
     router_inscripcion,
