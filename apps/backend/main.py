@@ -66,9 +66,8 @@ async def manejar_legajo_no_encontrado(request: Request, exc: LegajoNoEncontrado
 @app.on_event("startup")
 async def startup_event():
     """Eventos que se ejecutan al iniciar la aplicación."""
-    # Crear tablas de base de datos si no existen
-    # En producción esto se hace mediante migraciones Alembic
-    # await crear_todas_las_tablas()
+    # Las tablas las crean las migraciones de Alembic (alembic upgrade head),
+    # que docker-compose ejecuta antes de levantar la API.
     print("🚀 Sistema de Posgrado Backend iniciado")
 
 

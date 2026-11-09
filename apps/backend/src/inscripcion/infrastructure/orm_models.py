@@ -10,6 +10,7 @@ from datetime import datetime
 from sqlalchemy import (
     UUID,
     Boolean,
+    CheckConstraint,
     Column,
     Date,
     DateTime,
@@ -71,6 +72,17 @@ class LegajoModel(Base):
     auditoria = relationship("AuditoriaLegajoModel", back_populates="legajo", cascade="all, delete-orphan")
 
     __table_args__ = (
+        # Reglas de integridad del modelo de datos (ARQUITECTURA.md §8.1)
+        CheckConstraint(
+            "estado IN ('BORRADOR','PENDIENTE','EN_REVISION','OBSERVADO','COMPLETADO',"
+            "'ACTIVO','VENCIDO','RECHAZADO','BAJA','GRADUADO')",
+            name="estado_legajo_valido",
+        ),
+        CheckConstraint(
+            "tipo_carrera IN ('Especializacion','Maestria','Doctorado')",
+            name="tipo_carrera_valido",
+        ),
+        CheckConstraint("semaforo IN ('VERDE','AMARILLO','ROJO')", name="semaforo_valido"),
         Index("idx_legajos_dni", "dni"),
         Index("idx_legajos_email", "email"),
         Index("idx_legajos_cohorte_est", "cohorte_id", "estado"),
