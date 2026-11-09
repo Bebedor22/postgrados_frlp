@@ -3,8 +3,7 @@ from fastapi.responses import JSONResponse
 from typing import List, Optional
 from datetime import date
 
-from src.shared.auth.dependencies import get_current_user, require_role_coordinador, require_role_docente, \
-    require_role_cpr, require_role_aspirante
+from src.shared.auth.dependencies import require_role_coordinador
 from src.shared.database.connection import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -155,6 +154,7 @@ async def api_observar_legajo(
 @router.get(
     "/{legajo_id}",
     summary="Obtener detalle de legajo",
+    dependencies=[Depends(require_role_coordinador())],
     description="Obtener información de un legajo por su ID.",
     tags=["Consulta"],
 )
@@ -185,6 +185,7 @@ async def api_obtener_legajo(
 @router.get(
     "/",
     summary="Listar legajos con filtros",
+    dependencies=[Depends(require_role_coordinador())],
     description="Listar legajos con filtros por estado, cohorte y carrera.",
     tags=["Listado"],
 )
@@ -227,6 +228,7 @@ async def api_listar_legajos(
 @router.get(
     "/{legajo_id}/reserva-vencida",
     summary="Verificar si reserva de vacante venció",
+    dependencies=[Depends(require_role_coordinador())],
     description="Verifica si la reserva de 30 días desde COMPLETADO ha vencido (BR-005).",
     tags=["Validación"],
 )

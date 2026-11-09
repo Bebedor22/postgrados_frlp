@@ -8,6 +8,7 @@ from src.shared.config import get_settings
 from src.shared.exceptions import LegajoNoEncontrado
 
 # Importar routers de todos los módulos
+from src.autenticacion.presentation.router import router as router_autenticacion
 from src.inscripcion.presentation.router import router as router_inscripcion
 from src.carga_academica.presentation.router import router as router_carga_academica
 from src.seguimiento_graduacion.presentation.router import router as router_seguimiento
@@ -32,6 +33,11 @@ app.add_middleware(
 )
 
 # Incluir routers de todos los módulos
+app.include_router(
+    router_autenticacion,
+    prefix="/api/v1/auth",
+    tags=["Autenticación"],
+)
 app.include_router(
     router_inscripcion,
     prefix="/api/v1/legajos",
@@ -80,16 +86,6 @@ async def read_root():
         "estado": "operativo",
         "documentacion": "/api/docs",
     }
-
-
-# Endpoints de autenticación simples (placeholder)
-@app.post("/api/v1/auth/login", tags=["Autenticación"])
-async def login(
-        # En un sistema real recibirían email/contraseña y verificarían contra BD
-) -> Dict[str, str]:
-    """Endpoint de login placeholder."""
-    return {"access_token": "token-placeholder", "token_type": "bearer"}
-
 
 @app.get("/api/v1/health", tags=["Health"])
 async def health_check() -> Dict[str, str]:
