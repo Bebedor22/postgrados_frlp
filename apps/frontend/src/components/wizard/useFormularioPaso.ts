@@ -2,13 +2,15 @@
  * Lógica compartida por los 4 pasos del wizard ("cargar y guardar").
  *
  * - Al abrir el paso trae del backend lo que el aspirante ya guardó.
- * - Cada input queda conectado a `valores`.
- * - `guardarYSeguir` manda solo los campos del paso (PATCH) y navega al siguiente.
+ * - Cada input queda conectado a `valores` (y a su mensaje de error).
+ * - `validarPaso` marca en rojo los obligatorios vacíos o mal escritos.
+ * - `guardarYSeguir` manda los campos del paso (PATCH) y navega.
  */
 import {useRouter} from "expo-router";
 import {useEffect, useState} from "react";
 import {ApiError, Tramite, consultarTramite, guardarProgreso} from "../../lib/api";
 import {obtenerTokenTramite} from "../../lib/sesion";
+import {Errores, Regla, hayErrores, validar} from "../../lib/validaciones";
 
 export type Valores = Record<string, string | number | boolean | null>;
 
@@ -17,6 +19,7 @@ export function useFormularioPaso() {
     const [token] = useState(() => obtenerTokenTramite());
     const [tramite, setTramite] = useState<Tramite | null>(null);
     const [valores, setValores] = useState<Valores>({});
+    const [errores, setErrores] = useState<Errores>({});
     const [error, setError] = useState<string | null>(null);
     const [guardando, setGuardando] = useState(false);
 
@@ -37,14 +40,30 @@ export function useFormularioPaso() {
             .catch((e: ApiError) => setError(e.message));
     }, [token]);
 
-    /** Para un TextInput: value + onChangeText. */
-    const campo = (nombre: string) => ({
+    /** Al corregir un campo se borra su error. */
+    const set = (nombre: string, valor: string | number | boolean | null) => {
+        setValores((v) => ({...v, [nombre]: valor}));
+        setErrores(({[nombre]: _, ...resto}) => resto);
+    };
+
+    /** Para un CampoTexto: value + onChangeText + error. */
+    const campo = (nombre: string, transformar?: (texto: string) => string) => ({
         value: valores[nombre] == null ? "" : String(valores[nombre]),
-        onChangeText: (texto: string) => setValores((v) => ({...v, [nombre]: texto})),
+        onChangeText: (texto: string) => set(nombre, transformar ? transformar(texto) : texto),
+        error: errores[nombre],
     });
 
-    const set = (nombre: string, valor: string | number | boolean | null) =>
-        setValores((v) => ({...v, [nombre]: valor}));
+    /** Valida el paso; si algo falla lo marca y devuelve false. */
+    function validarPaso(reglas: Record<string, Regla[]>, extra: Valores = {}): boolean {
+        const encontrados = validar({...valores, ...extra}, reglas);
+        setErrores(encontrados);
+        if (hayErrores(encontrados)) {
+            setError("Revisá los campos marcados en rojo para poder continuar.");
+            return false;
+        }
+        setError(null);
+        return true;
+    }
 
     /** Guarda los cambios del paso. Si `destino` está, navega después. */
     async function guardarYSeguir(cambios: Valores, destino?: string): Promise<Tramite | null> {
@@ -68,5 +87,8 @@ export function useFormularioPaso() {
         }
     }
 
-    return {token, tramite, valores, campo, set, error, setError, guardando, setGuardando, guardarYSeguir};
+    return {
+        token, tramite, valores, campo, set, errores, error, setError,
+        guardando, setGuardando, validarPaso, guardarYSeguir,
+    };
 }

@@ -24,6 +24,7 @@ export function WizardShell({
                                 children,
                                 footer,
                                 showCancel = true,
+                                aviso,
                             }: {
 /** 0 = pantalla previa (sin indicador de pasos) */
     currentStep: 0 | 1 | 2 | 3 | 4;
@@ -33,6 +34,8 @@ export function WizardShell({
     footer: ReactNode;
     /** false oculta el botón "Cancelar inscripción" (por ejemplo, en la pantalla del trámite) */
     showCancel?: boolean;
+    /** Mensaje que se muestra justo arriba de los botones (por ejemplo, un error al avanzar) */
+    aviso?: ReactNode;
 }) {
     const {width} = useWindowDimensions();
     const isCompact = width < 720;
@@ -77,6 +80,8 @@ export function WizardShell({
 
                         {children}
                     </View>
+
+                    {aviso ? <View style={{marginTop: 24}}>{aviso}</View> : null}
 
                     <View
                         style={[

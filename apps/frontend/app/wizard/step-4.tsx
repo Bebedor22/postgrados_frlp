@@ -1,7 +1,7 @@
 import {useState} from "react";
-import {Link, useRouter} from "expo-router";
+import {useRouter} from "expo-router";
 import {Alert, Pressable, Text, View} from "react-native";
-import {BotonAccion, Cargando, MensajeError} from "../../src/components/wizard/Campos";
+import {BotonAccion, Cargando, Etiqueta, MensajeError, TextoError} from "../../src/components/wizard/Campos";
 import {WizardShell, wizardStyles} from "../../src/components/wizard/WizardShell";
 import {useFormularioPaso} from "../../src/components/wizard/useFormularioPaso";
 import {ApiError, confirmarInscripcion} from "../../src/lib/api";
@@ -16,17 +16,22 @@ const TIPOS_DE_BECA = [
 export default function Step4Screen() {
     const router = useRouter();
     const [scheduled, setScheduled] = useState(false);
-    const {token, tramite, valores, set, error, setError, guardando, setGuardando, guardarYSeguir} = useFormularioPaso();
+    const {
+        token, tramite, valores, set, errores, error, setError, guardando, setGuardando, validarPaso, guardarYSeguir,
+    } = useFormularioPaso();
     const [faltantes, setFaltantes] = useState<string[]>([]);
     const solicitaBeca = Boolean(valores.solicita_beca);
 
+    const cambiosDelPaso = () => ({
+        solicita_beca: solicitaBeca,
+        tipo_beca: solicitaBeca ? valores.tipo_beca : null,
+    });
+
     async function enviar() {
         setFaltantes([]);
+        if (solicitaBeca && !validarPaso({tipo_beca: ["requerido"]})) return;
         // 1) Guardar la beca  2) Confirmar: BORRADOR → PENDIENTE
-        const guardado = await guardarYSeguir({
-            solicita_beca: solicitaBeca,
-            tipo_beca: solicitaBeca ? valores.tipo_beca : null,
-        });
+        const guardado = await guardarYSeguir(cambiosDelPaso());
         if (!guardado || !token) return;
         if (!guardado.progreso.completo) {
             setError("Todavía faltan datos para enviar la inscripción:");
@@ -58,18 +63,17 @@ export default function Step4Screen() {
             currentStep={4}
             title="Documentación y Archivos"
             subtitle="Subí los documentos requeridos para completar tu inscripción."
+            aviso={tramite ? <MensajeError mensaje={error} lista={faltantes}/> : null}
             footer={
                 <>
-                    <Link href="/wizard/step-3" asChild>
-                        <Pressable style={wizardStyles.secondaryButton}>
-                            <Text style={wizardStyles.secondaryButtonText}>‹ Anterior</Text>
-                        </Pressable>
-                    </Link>
+                    <Pressable style={wizardStyles.secondaryButton} onPress={() => guardarYSeguir(cambiosDelPaso(), "/wizard/step-3")}>
+                        <Text style={wizardStyles.secondaryButtonText}>‹ Anterior</Text>
+                    </Pressable>
                     <BotonAccion texto="Enviar Inscripción ✓" alPresionar={enviar} ocupado={guardando} exito/>
                 </>
             }
         >
-            <MensajeError mensaje={error} lista={faltantes}/>
+            {!tramite ? <MensajeError mensaje={error}/> : null}
             {!tramite && !error ? <Cargando/> : null}
             <Text style={{marginBottom: 12, color: "#6b7280", fontSize: 13}}>
                 La carga de archivos se habilita en la próxima versión. Por ahora podés enviar la inscripción con tus datos.
@@ -93,7 +97,10 @@ export default function Step4Screen() {
 
                 <Pressable
                     style={wizardStyles.radioItem}
-                    onPress={() => set("solicita_beca", !solicitaBeca)}
+                    onPress={() => {
+                        set("solicita_beca", !solicitaBeca);
+                        set("tipo_beca", null);
+                    }}
                 >
                     <View style={[wizardStyles.checkbox, solicitaBeca && {
                         backgroundColor: "#0d2035",
@@ -106,7 +113,7 @@ export default function Step4Screen() {
 
                 {solicitaBeca && (
                     <View style={{marginTop: 16, paddingLeft: 24}}>
-                        <Text style={wizardStyles.label}>Tipo de beca solicitada:</Text>
+                        <Etiqueta texto="Tipo de beca solicitada" requerido/>
                         <View style={{gap: 10, marginBottom: 16}}>
                             {TIPOS_DE_BECA.map((beca) => {
                                 const elegida = valores.tipo_beca === beca.valor;
@@ -133,6 +140,7 @@ export default function Step4Screen() {
                                     </Pressable>
                                 );
                             })}
+                            <TextoError mensaje={errores.tipo_beca && "Elegí el tipo de beca"}/>
                         </View>
 
                         <Text style={wizardStyles.label}>Formulario de solicitud de beca:</Text>
@@ -148,7 +156,7 @@ export default function Step4Screen() {
 
             <View style={[wizardStyles.section, {marginTop: 20}]}>
                 <Text style={wizardStyles.sectionTitle}>Prueba de Notificaciones</Text>
-                <Text style={wizardStyles.stepSubtitle}>
+                <Text style={{marginBottom: 12, color: "#6b7280", fontSize: 13}}>
                     Podés probar el sistema de notificaciones local antes de finalizar.
                 </Text>
                 <Pressable

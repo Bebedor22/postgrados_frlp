@@ -1,6 +1,5 @@
-import {Link} from "expo-router";
-import {Pressable, Text, TextInput, View, useWindowDimensions} from "react-native";
-import {BotonAccion, Cargando, MensajeError} from "../../src/components/wizard/Campos";
+import {Pressable, Text, View, useWindowDimensions} from "react-native";
+import {BotonAccion, CampoTexto, Cargando, MensajeError, NotaObligatorios} from "../../src/components/wizard/Campos";
 import {WizardShell, wizardStyles} from "../../src/components/wizard/WizardShell";
 import {useFormularioPaso} from "../../src/components/wizard/useFormularioPaso";
 
@@ -13,75 +12,58 @@ export default function Step2Screen() {
     const {width} = useWindowDimensions();
     const isCompact = width < 860;
     const halfOrFull = isCompact ? wizardStyles.fullField : wizardStyles.halfField;
-    const {tramite, valores, campo, error, guardando, guardarYSeguir} = useFormularioPaso();
+    const {tramite, valores, campo, error, guardando, validarPaso, guardarYSeguir} = useFormularioPaso();
 
-    const siguiente = () =>
-        guardarYSeguir(Object.fromEntries(CAMPOS_PASO_2.map((c) => [c, valores[c] ?? null])), "/wizard/step-3");
+    const cambiosDelPaso = () => Object.fromEntries(CAMPOS_PASO_2.map((c) => [c, valores[c] ?? null]));
+
+    function siguiente() {
+        const valido = validarPaso({
+            telefono_movil: ["requerido", "telefono"],
+            telefono_fijo: ["telefono"],
+            email: ["requerido", "email"],
+            email_alternativo: ["email"],
+            pais: ["requerido"],
+            provincia: ["requerido"],
+            ciudad: ["requerido"],
+            calle: ["requerido"],
+            numero: ["requerido"],
+            codigo_postal: ["requerido"],
+        });
+        if (valido) guardarYSeguir(cambiosDelPaso(), "/wizard/step-3");
+    }
 
     return (
         <WizardShell
             currentStep={2}
             title="Contacto y Residencia"
             subtitle="Completá los datos de contacto y domicilio."
+            aviso={tramite ? <MensajeError mensaje={error}/> : null}
             footer={
                 <>
-                    <Link href="/wizard/step-1" asChild>
-                        <Pressable style={wizardStyles.secondaryButton}>
-                            <Text style={wizardStyles.secondaryButtonText}>‹ Anterior</Text>
-                        </Pressable>
-                    </Link>
+                    {/* Volver también guarda lo escrito, sin exigir los obligatorios */}
+                    <Pressable style={wizardStyles.secondaryButton} onPress={() => guardarYSeguir(cambiosDelPaso(), "/wizard/step-1")}>
+                        <Text style={wizardStyles.secondaryButtonText}>‹ Anterior</Text>
+                    </Pressable>
                     <BotonAccion texto="Siguiente ›" alPresionar={siguiente} ocupado={guardando}/>
                 </>
             }
         >
-            <MensajeError mensaje={error}/>
+            {!tramite ? <MensajeError mensaje={error}/> : null}
             {!tramite && !error ? <Cargando/> : null}
             <View style={wizardStyles.twoColumns}>
-                <View style={halfOrFull}>
-                    <Text style={wizardStyles.label}>Teléfono celular</Text>
-                    <TextInput placeholder="+54 9 11 1234-5678" keyboardType="phone-pad" style={wizardStyles.input} {...campo("telefono_movil")}/>
-                </View>
-                <View style={halfOrFull}>
-                    <Text style={wizardStyles.label}>Teléfono fijo (opcional)</Text>
-                    <TextInput placeholder="0221 456-7890" keyboardType="phone-pad" style={wizardStyles.input} {...campo("telefono_fijo")}/>
-                </View>
-                <View style={halfOrFull}>
-                    <Text style={wizardStyles.label}>Correo electrónico</Text>
-                    <TextInput placeholder="ejemplo@email.com" keyboardType="email-address" autoCapitalize="none" style={wizardStyles.input} {...campo("email")}/>
-                </View>
-                <View style={halfOrFull}>
-                    <Text style={wizardStyles.label}>Correo alternativo (opcional)</Text>
-                    <TextInput placeholder="otro@email.com" keyboardType="email-address" autoCapitalize="none" style={wizardStyles.input} {...campo("email_alternativo")}/>
-                </View>
-                <View style={halfOrFull}>
-                    <Text style={wizardStyles.label}>País</Text>
-                    <TextInput placeholder="Argentina" style={wizardStyles.input} {...campo("pais")}/>
-                </View>
-                <View style={halfOrFull}>
-                    <Text style={wizardStyles.label}>Provincia</Text>
-                    <TextInput placeholder="Buenos Aires" style={wizardStyles.input} {...campo("provincia")}/>
-                </View>
-                <View style={halfOrFull}>
-                    <Text style={wizardStyles.label}>Localidad</Text>
-                    <TextInput placeholder="La Plata" style={wizardStyles.input} {...campo("ciudad")}/>
-                </View>
-                <View style={halfOrFull}>
-                    <Text style={wizardStyles.label}>Calle</Text>
-                    <TextInput placeholder="Av. 7" style={wizardStyles.input} {...campo("calle")}/>
-                </View>
-                <View style={halfOrFull}>
-                    <Text style={wizardStyles.label}>Número</Text>
-                    <TextInput placeholder="1234" keyboardType="numeric" style={wizardStyles.input} {...campo("numero")}/>
-                </View>
-                <View style={halfOrFull}>
-                    <Text style={wizardStyles.label}>Piso / Depto (opcional)</Text>
-                    <TextInput placeholder="2° B" style={wizardStyles.input} {...campo("piso_depto")}/>
-                </View>
-                <View style={halfOrFull}>
-                    <Text style={wizardStyles.label}>Código Postal</Text>
-                    <TextInput placeholder="1900" keyboardType="numeric" style={wizardStyles.input} {...campo("codigo_postal")}/>
-                </View>
+                <CampoTexto contenedor={halfOrFull} etiqueta="Teléfono celular" requerido placeholder="Ej.: +54 9 221 123-4567" keyboardType="phone-pad" {...campo("telefono_movil")}/>
+                <CampoTexto contenedor={halfOrFull} etiqueta="Teléfono fijo (opcional)" placeholder="Ej.: 0221 456-7890" keyboardType="phone-pad" {...campo("telefono_fijo")}/>
+                <CampoTexto contenedor={halfOrFull} etiqueta="Correo electrónico" requerido placeholder="Ej.: nombre@email.com" keyboardType="email-address" autoCapitalize="none" {...campo("email")}/>
+                <CampoTexto contenedor={halfOrFull} etiqueta="Correo alternativo (opcional)" placeholder="Ej.: otro@email.com" keyboardType="email-address" autoCapitalize="none" {...campo("email_alternativo")}/>
+                <CampoTexto contenedor={halfOrFull} etiqueta="País" requerido placeholder="Ej.: Argentina" {...campo("pais")}/>
+                <CampoTexto contenedor={halfOrFull} etiqueta="Provincia" requerido placeholder="Ej.: Buenos Aires" {...campo("provincia")}/>
+                <CampoTexto contenedor={halfOrFull} etiqueta="Localidad" requerido placeholder="Ej.: La Plata" {...campo("ciudad")}/>
+                <CampoTexto contenedor={halfOrFull} etiqueta="Calle" requerido placeholder="Ej.: Av. 7" {...campo("calle")}/>
+                <CampoTexto contenedor={halfOrFull} etiqueta="Número" requerido placeholder="Ej.: 1234" keyboardType="numeric" {...campo("numero")}/>
+                <CampoTexto contenedor={halfOrFull} etiqueta="Piso / Depto (opcional)" placeholder="Ej.: 2° B" {...campo("piso_depto")}/>
+                <CampoTexto contenedor={halfOrFull} etiqueta="Código postal" requerido placeholder="Ej.: 1900" keyboardType="numeric" {...campo("codigo_postal")}/>
             </View>
+            <NotaObligatorios/>
         </WizardShell>
     );
 }
