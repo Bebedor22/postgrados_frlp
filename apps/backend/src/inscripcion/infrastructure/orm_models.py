@@ -3,6 +3,7 @@
 Solo en la capa de infraestructura vive SQLAlchemy. Todos los modelos usan la
 misma `Base` declarada en `src/shared/database/connection.py`, así Alembic y
 `crear_todas_las_tablas()` ven todas las tablas.
+La tabla \cohortes` está en `src/oferta_academica/infrastructure/orm_models.py`.`
 """
 import uuid
 from datetime import datetime
@@ -12,7 +13,6 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Column,
-    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -23,23 +23,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 
 from src.shared.database.connection import Base
-
-
-class CohorteModel(Base):
-    __tablename__ = "cohortes"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    anio = Column(Integer, nullable=False)
-    nombre = Column(String(50), nullable=False, unique=True)
-    abierta = Column(Boolean, nullable=False, default=False)
-    fecha_inicio = Column(Date)
-    created_at = Column(DateTime, default=datetime.now)
-
-    legajos = relationship("LegajoModel", back_populates="cohorte", cascade="all, delete-orphan")
-
-    def __repr__(self) -> str:
-        return f"<Cohorte {self.nombre} ({self.anio})>"
-
 
 class LegajoModel(Base):
     __tablename__ = "legajos"
@@ -66,8 +49,7 @@ class LegajoModel(Base):
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
-    # Relaciones
-    cohorte = relationship("CohorteModel", back_populates="legajos")
+    # Relaciones (la cohorte vive en el módulo oferta_academica: solo se referencia por FK)
     documentos = relationship("DocumentoModel", back_populates="legajo", cascade="all, delete-orphan")
     auditoria = relationship("AuditoriaLegajoModel", back_populates="legajo", cascade="all, delete-orphan")
 

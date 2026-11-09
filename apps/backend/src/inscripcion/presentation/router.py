@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, UploadFile, File, BackgroundTasks
+from fastapi import APIRouter, Depends, UploadFile, File, BackgroundTasks, HTTPException, status
 from fastapi.responses import JSONResponse
 from typing import List, Optional
 from datetime import date
@@ -13,6 +13,9 @@ from src.inscripcion.application.observar_legajo import observar_legajo
 from src.inscripcion.application.verificar_reserva_vencida import verificar_reserva_vencida
 from src.inscripcion.domain.entities import EstadoLegajo, TipoCarrera
 from src.shared.exceptions import LegajoNoEncontrado
+from src.oferta_academica.application.gestionar_cohortes import CohorteNoEncontrada, verificar_cohorte_abierta
+from src.oferta_academica.domain.entities import ReglaDeNegocioViolada
+from src.oferta_academica.infrastructure.pg_repository import PostgresCohorteRepository
 
 router = APIRouter(tags=["Legajos - Módulo Core"])
 
@@ -42,6 +45,14 @@ async def registro_aspirante(
     Endpoint público: cualquier persona puede acceder para inscribirse.
     Valida DNI, email y crea aspirante + legajo en estado BORRADOR.
     """
+    # BR-009: solo se aceptan inscripciones en cohortes con la inscripción abierta
+    try:
+        await verificar_cohorte_abierta(cohorte_id, PostgresCohorteRepository(db))
+    except CohorteNoEncontrada:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Cohorte no encontrada")
+    except ReglaDeNegocioViolada as e:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(e))
+
     aspirante, legajo, error = inscribir_aspirante(
         id=id,
         dni=dni,
