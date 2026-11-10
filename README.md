@@ -66,6 +66,7 @@ Lee en este orden antes de escribir código:
 5. 🗓️ [`docs/CRONOGRAMA.md`](docs/CRONOGRAMA.md) — Tu roadmap personal de las próximas 30 semanas
 6. 🚀 [`onboarding/Guia_KickOff.md`](docs/onboarding/GUIA_KICKOFF.md) — Qué entregar en la semana 3
 7. 🔌 [`docs/DATA_MAPPING.md`](docs/DATA_MAPPING.md) — **Mapeo de datos Frontend ↔ Backend (FastAPI)**
+8. ⚡ [`onboarding/GUIA_RAPIDA_CORE.md`](onboarding/GUIA_RAPIDA_CORE.md) — **Cómo levantar y mostrar el Core actual** (backend + frontend, usuarios de prueba, guion de demo)
 ---
 
 ## Estructura de Módulos
@@ -82,6 +83,7 @@ Lee en este orden antes de escribir código:
 ## Quickstart — Levantá el entorno en 5 minutos
 
 > **Requisitos previos:** Git · Docker Desktop · Node.js 20+ (o Python 3.11+)
+> ⚡ **Para el Core de la rama `feature/backend-core`**, seguí la [guía rápida](onboarding/GUIA_RAPIDA_CORE.md): los pasos de abajo son los originales de la plantilla.
 
 ```bash
 # 1. Cloná tu repositorio (URL provisto por GitHub)

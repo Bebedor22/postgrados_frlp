@@ -14,6 +14,13 @@ Este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ### Added
 - Estructura inicial del repositorio
 - Documentación base: SRS, PRD, BFD, Arquitectura, Cronograma
+- Backend FastAPI con Clean Architecture, PostgreSQL 16 en Docker y migraciones con Alembic
+- Login con JWT y bcrypt, roles y usuarios de prueba
+- Carreras, cohortes y apertura/cierre de la inscripción (BR-009)
+- Inscripción por pasos con link de seguimiento y límite de 2 carreras por cohorte (BR-001)
+- Bandeja de la coordinación y workflow del legajo, con número de legajo definitivo al aprobar
+- Frontend conectado: wizard de inscripción, trámite del aspirante, login y portal de conducción
+- Script de datos de demo (`scripts/seed.py`) y guía rápida del Core (`onboarding/GUIA_RAPIDA_CORE.md`)
 
 ---
 
