@@ -4,7 +4,7 @@
  * La URL base sale de EXPO_PUBLIC_API_URL (ver .env.example de la raíz) y por
  * defecto apunta al backend de Docker en localhost:8000.
  */
-import {obtenerTokenSesion} from "./sesion";
+import {cerrarSesion, obtenerTokenSesion} from "./sesion";
 
 export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
@@ -42,6 +42,8 @@ async function pedir<T>(ruta: string, opciones: RequestInit = {}, conSesion = fa
     }
     const cuerpo = respuesta.status === 204 ? null : await respuesta.json().catch(() => null);
     if (!respuesta.ok) {
+        // Token vencido o inválido: se cierra la sesión para que la pantalla mande al login
+        if (conSesion && respuesta.status === 401) cerrarSesion();
         throw new ApiError(respuesta.status, mensajeDeError(cuerpo?.detail, respuesta.status));
     }
     return cuerpo as T;
@@ -131,3 +133,66 @@ export const guardarProgreso = (token: string, cambios: Record<string, unknown>)
 
 export const confirmarInscripcion = (token: string) =>
     pedir<Tramite>(`/inscripciones/${token}/confirmar`, {method: "POST"});
+
+// ── Conducción: cohortes y bandeja de legajos (requieren login) ──────────────
+
+export const listarCohortes = () => pedir<Cohorte[]>("/cohortes/");
+
+export const cambiarInscripcionCohorte = (cohorteId: string, abierta: boolean) =>
+    pedir<Cohorte>(`/cohortes/${cohorteId}/inscripcion`, {method: "PATCH", body: JSON.stringify({abierta})}, true);
+
+export interface LegajoFila {
+    id: string;
+    numero_legajo: string;
+    apellido: string;
+    nombre: string;
+    tipo_documento: string;
+    documento: string;
+    email: string;
+    carrera_id: string | null;
+    carrera: string | null;
+    estado: string;
+    solicita_beca: boolean;
+    tipo_beca: string | null;
+    fecha_inscripcion: string | null;
+}
+
+export interface FiltrosLegajos {
+    cohorte_id?: string;
+    estado?: string;
+    buscar?: string;
+    pagina?: number;
+    por_pagina?: number;
+}
+
+function aQuery(filtros: Record<string, string | number | undefined>): string {
+    const partes = Object.entries(filtros)
+        .filter(([, v]) => v !== undefined && v !== "")
+        .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`);
+    return partes.length ? `?${partes.join("&")}` : "";
+}
+
+export const listarLegajos = (filtros: FiltrosLegajos) =>
+    pedir<{total: number; pagina: number; por_pagina: number; legajos: LegajoFila[]}>(
+        `/legajos/${aQuery({...filtros})}`, {}, true,
+    );
+
+export const resumenLegajos = (cohorteId?: string) =>
+    pedir<Record<string, number>>(`/legajos/resumen${aQuery({cohorte_id: cohorteId})}`, {}, true);
+
+export type DetalleLegajo = Tramite & {reserva_vence_el: string | null};
+
+export const detalleLegajo = (id: string) => pedir<DetalleLegajo>(`/legajos/${id}`, {}, true);
+
+export type AccionLegajo = "revisar" | "observar" | "aprobar" | "rechazar" | "matricular";
+
+/** Cambia el estado de un legajo. "observar" pide comentario y "rechazar" pide motivo. */
+export function accionLegajo(id: string, accion: AccionLegajo, texto?: string) {
+    const cuerpo =
+        accion === "observar" ? {comentario: texto} : accion === "rechazar" ? {motivo: texto} : undefined;
+    return pedir<{legajo_id: string; numero_legajo: string; estado: string}>(
+        `/legajos/${id}/${accion}`,
+        {method: "POST", body: cuerpo ? JSON.stringify(cuerpo) : undefined},
+        true,
+    );
+}

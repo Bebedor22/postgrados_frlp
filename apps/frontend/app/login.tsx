@@ -38,6 +38,8 @@ export default function LoginScreen() {
             guardarSesion(sesion.access_token, sesion.usuario);
             if (sesion.usuario.rol === "DOCENTE") {
                 router.replace("/docente/misCursos");
+            } else if (sesion.usuario.rol === "COORDINADOR" || sesion.usuario.rol === "DIRECCION") {
+                router.replace("/conduccion");
             } else {
                 setAviso(`Sesión iniciada: ${sesion.usuario.nombre} (${sesion.usuario.rol}).`);
             }
