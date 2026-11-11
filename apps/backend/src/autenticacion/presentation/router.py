@@ -20,7 +20,7 @@ router = APIRouter()
     summary="Iniciar sesión",
     description="Recibe email y contraseña y devuelve un JWT válido por 8 horas.",
 )
-async def login(datos: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+async def login(datos: LoginRequest, db: AsyncSession = Depends(get_db, scope="function")) -> TokenResponse:
     try:
         usuario = await iniciar_sesion(
             email=datos.email,

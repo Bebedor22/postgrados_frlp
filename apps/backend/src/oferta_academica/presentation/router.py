@@ -35,7 +35,7 @@ router_cohortes = APIRouter()
     summary="Listar carreras activas",
     description="Público: lo usa el formulario de inscripción para que el aspirante elija la carrera.",
 )
-async def api_listar_carreras(db: AsyncSession = Depends(get_db)):
+async def api_listar_carreras(db: AsyncSession = Depends(get_db, scope="function")):
     carreras = await listar_carreras(PostgresCarreraRepository(db))
     return [CarreraResponse(**asdict(c)) for c in carreras]
 
@@ -48,7 +48,7 @@ async def api_listar_carreras(db: AsyncSession = Depends(get_db)):
     description="Solo la Dirección de Posgrado o el equipo de conducción.",
     dependencies=[Depends(require_role("DIRECCION", "COORDINADOR"))],
 )
-async def api_crear_carrera(datos: CarreraCrear, db: AsyncSession = Depends(get_db)):
+async def api_crear_carrera(datos: CarreraCrear, db: AsyncSession = Depends(get_db, scope="function")):
     try:
         carrera = await crear_carrera(datos.nombre, datos.tipo, datos.duracion_anios, PostgresCarreraRepository(db))
     except CarreraYaExiste as e:
@@ -66,7 +66,7 @@ async def api_crear_carrera(datos: CarreraCrear, db: AsyncSession = Depends(get_
     summary="Listar cohortes",
     description="Público. Con `solo_abiertas=true` devuelve solo las que aceptan inscripciones.",
 )
-async def api_listar_cohortes(solo_abiertas: bool = False, db: AsyncSession = Depends(get_db)):
+async def api_listar_cohortes(solo_abiertas: bool = False, db: AsyncSession = Depends(get_db, scope="function")):
     cohortes = await listar_cohortes(PostgresCohorteRepository(db), solo_abiertas=solo_abiertas)
     return [CohorteResponse(**asdict(c)) for c in cohortes]
 
@@ -79,7 +79,7 @@ async def api_listar_cohortes(solo_abiertas: bool = False, db: AsyncSession = De
     description="La cohorte se crea con la inscripción cerrada.",
     dependencies=[Depends(require_role("COORDINADOR"))],
 )
-async def api_crear_cohorte(datos: CohorteCrear, db: AsyncSession = Depends(get_db)):
+async def api_crear_cohorte(datos: CohorteCrear, db: AsyncSession = Depends(get_db, scope="function")):
     try:
         cohorte = await crear_cohorte(datos.anio, datos.nombre, PostgresCohorteRepository(db), datos.fecha_inicio)
     except CohorteYaExiste as e:
@@ -93,7 +93,7 @@ async def api_crear_cohorte(datos: CohorteCrear, db: AsyncSession = Depends(get_
     summary="Abrir o cerrar la inscripción de una cohorte (BR-009)",
     dependencies=[Depends(require_role("COORDINADOR"))],
 )
-async def api_cambiar_inscripcion(cohorte_id: str, datos: CambioInscripcion, db: AsyncSession = Depends(get_db)):
+async def api_cambiar_inscripcion(cohorte_id: str, datos: CambioInscripcion, db: AsyncSession = Depends(get_db, scope="function")):
     try:
         cohorte = await cambiar_estado_inscripcion(cohorte_id, datos.abierta, PostgresCohorteRepository(db))
     except CohorteNoEncontrada:

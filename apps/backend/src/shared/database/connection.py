@@ -26,6 +26,11 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
     Confirma (commit) la transacción si el endpoint terminó bien y la
     deshace (rollback) si se lanzó una excepción.
+
+    Usarla siempre con `Depends(get_db, scope="function")`: así el commit se hace
+    ANTES de enviar la respuesta. Con el scope por defecto ("request") FastAPI
+    responde primero y confirma después, y el cliente podría recibir un 201 de
+    algo que todavía no está guardado (o que falla al guardarse).
     """
     async with AsyncSessionLocal() as session:
         try:

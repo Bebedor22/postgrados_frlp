@@ -55,7 +55,7 @@ def _error_http(error: Exception) -> HTTPException:
         "inscripción y consultar su estado. Valida cohorte abierta (BR-009) y máximo 2 carreras (BR-001)."
     ),
 )
-async def api_iniciar_inscripcion(datos: InicioInscripcion, db: AsyncSession = Depends(get_db)):
+async def api_iniciar_inscripcion(datos: InicioInscripcion, db: AsyncSession = Depends(get_db, scope="function")):
     try:
         legajo, token = await iniciar_inscripcion(
             **datos.model_dump(),
@@ -79,7 +79,7 @@ async def api_iniciar_inscripcion(datos: InicioInscripcion, db: AsyncSession = D
     summary="Estado del trámite",
     description="Datos cargados, porcentaje completado, campos faltantes por paso e historial de estados.",
 )
-async def api_consultar_tramite(token: str, db: AsyncSession = Depends(get_db)):
+async def api_consultar_tramite(token: str, db: AsyncSession = Depends(get_db, scope="function")):
     try:
         return _a_respuesta(await consultar_tramite(token, PostgresLegajoRepository(db)))
     except TramiteNoEncontrado as e:
@@ -92,7 +92,7 @@ async def api_consultar_tramite(token: str, db: AsyncSession = Depends(get_db)):
     summary="Guardar progreso (cargar y guardar)",
     description="Guarda solo los campos enviados. Se puede llamar en cada paso del wizard, todas las veces que haga falta.",
 )
-async def api_guardar_progreso(token: str, datos: DatosFormulario, db: AsyncSession = Depends(get_db)):
+async def api_guardar_progreso(token: str, datos: DatosFormulario, db: AsyncSession = Depends(get_db, scope="function")):
     try:
         cambios = datos.model_dump(exclude_unset=True)
         return _a_respuesta(await guardar_progreso(token, cambios, PostgresLegajoRepository(db)))
@@ -106,7 +106,7 @@ async def api_guardar_progreso(token: str, datos: DatosFormulario, db: AsyncSess
     summary="Enviar la inscripción a revisión",
     description="Con el formulario completo, el legajo pasa de BORRADOR (u OBSERVADO) a PENDIENTE.",
 )
-async def api_confirmar_inscripcion(token: str, db: AsyncSession = Depends(get_db)):
+async def api_confirmar_inscripcion(token: str, db: AsyncSession = Depends(get_db, scope="function")):
     try:
         return _a_respuesta(await confirmar_inscripcion(token, PostgresLegajoRepository(db)))
     except (TramiteNoEncontrado, ReglaDeNegocioViolada) as e:

@@ -72,7 +72,7 @@ async def api_listar_legajos(
         buscar: Optional[str] = Query(None, min_length=2),
         pagina: int = Query(1, ge=1),
         por_pagina: int = Query(20, ge=1, le=100),
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_db, scope="function"),
         _usuario: dict = Depends(puede_leer),
 ):
     filtros = FiltrosLegajos(cohorte_id, carrera_id, estado, buscar, pagina, por_pagina)
@@ -111,7 +111,7 @@ async def api_listar_legajos(
 )
 async def api_resumen(
         cohorte_id: Optional[str] = None,
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_db, scope="function"),
         _usuario: dict = Depends(puede_leer),
 ):
     return await resumen_por_estado(PostgresLegajoRepository(db), cohorte_id)
@@ -123,7 +123,7 @@ async def api_resumen(
     summary="Vencer reservas de vacante (BR-005)",
     description="Pasa a VENCIDO los legajos que llevan más de 30 días en COMPLETADO sin matricularse.",
 )
-async def api_vencer_reservas(db: AsyncSession = Depends(get_db), usuario: dict = Depends(puede_gestionar)):
+async def api_vencer_reservas(db: AsyncSession = Depends(get_db, scope="function"), usuario: dict = Depends(puede_gestionar)):
     vencidos = await vencer_reservas(PostgresLegajoRepository(db), usuario["email"])
     return ReservasVencidasResponse(cantidad=len(vencidos), legajos=[_respuesta_cambio(l) for l in vencidos])
 
@@ -134,7 +134,7 @@ async def api_vencer_reservas(db: AsyncSession = Depends(get_db), usuario: dict 
     summary="Detalle completo de un legajo",
     description="Todos los datos del formulario, el % completado, el historial de estados y la reserva de vacante.",
 )
-async def api_detalle_legajo(legajo_id: str, db: AsyncSession = Depends(get_db), _usuario: dict = Depends(puede_leer)):
+async def api_detalle_legajo(legajo_id: str, db: AsyncSession = Depends(get_db, scope="function"), _usuario: dict = Depends(puede_leer)):
     detalle = await obtener_detalle(legajo_id, PostgresLegajoRepository(db))
     base = tramite_a_respuesta(detalle.legajo, detalle.formulario, detalle.historial)
     return LegajoDetalleResponse(**base.model_dump(), reserva_vence_el=detalle.reserva_vence_el)
@@ -143,7 +143,7 @@ async def api_detalle_legajo(legajo_id: str, db: AsyncSession = Depends(get_db),
 # ── Workflow (solo COORDINADOR) ──────────────────────────────────────────────
 
 @router.post("/{legajo_id}/revisar", response_model=CambioEstadoResponse, summary="Tomar para revisión (PENDIENTE → EN_REVISION)")
-async def api_revisar(legajo_id: str, db: AsyncSession = Depends(get_db), usuario: dict = Depends(puede_gestionar)):
+async def api_revisar(legajo_id: str, db: AsyncSession = Depends(get_db, scope="function"), usuario: dict = Depends(puede_gestionar)):
     return _respuesta_cambio(await _ejecutar(revisar_legajo(legajo_id, PostgresLegajoRepository(db), usuario["email"])))
 
 
@@ -154,7 +154,7 @@ async def api_revisar(legajo_id: str, db: AsyncSession = Depends(get_db), usuari
     description="El aspirante ve el comentario en su trámite, corrige y vuelve a enviar.",
 )
 async def api_observar(
-        legajo_id: str, datos: ComentarioRequest, db: AsyncSession = Depends(get_db), usuario: dict = Depends(puede_gestionar)
+        legajo_id: str, datos: ComentarioRequest, db: AsyncSession = Depends(get_db, scope="function"), usuario: dict = Depends(puede_gestionar)
 ):
     caso = observar_legajo(legajo_id, datos.comentario, PostgresLegajoRepository(db), usuario["email"])
     return _respuesta_cambio(await _ejecutar(caso))
@@ -166,19 +166,19 @@ async def api_observar(
     summary="Aprobar (EN_REVISION → COMPLETADO)",
     description="Asigna el número de legajo definitivo (AA-NNNN) y empieza a correr la reserva de vacante de 30 días.",
 )
-async def api_aprobar(legajo_id: str, db: AsyncSession = Depends(get_db), usuario: dict = Depends(puede_gestionar)):
+async def api_aprobar(legajo_id: str, db: AsyncSession = Depends(get_db, scope="function"), usuario: dict = Depends(puede_gestionar)):
     caso = aprobar_legajo(legajo_id, PostgresLegajoRepository(db), PostgresCohorteRepository(db), usuario["email"])
     return _respuesta_cambio(await _ejecutar(caso))
 
 
 @router.post("/{legajo_id}/rechazar", response_model=CambioEstadoResponse, summary="Rechazar (EN_REVISION → RECHAZADO)")
 async def api_rechazar(
-        legajo_id: str, datos: MotivoRequest, db: AsyncSession = Depends(get_db), usuario: dict = Depends(puede_gestionar)
+        legajo_id: str, datos: MotivoRequest, db: AsyncSession = Depends(get_db, scope="function"), usuario: dict = Depends(puede_gestionar)
 ):
     caso = rechazar_legajo(legajo_id, datos.motivo, PostgresLegajoRepository(db), usuario["email"])
     return _respuesta_cambio(await _ejecutar(caso))
 
 
 @router.post("/{legajo_id}/matricular", response_model=CambioEstadoResponse, summary="Matricular (COMPLETADO → ACTIVO)")
-async def api_matricular(legajo_id: str, db: AsyncSession = Depends(get_db), usuario: dict = Depends(puede_gestionar)):
+async def api_matricular(legajo_id: str, db: AsyncSession = Depends(get_db, scope="function"), usuario: dict = Depends(puede_gestionar)):
     return _respuesta_cambio(await _ejecutar(matricular_legajo(legajo_id, PostgresLegajoRepository(db), usuario["email"])))
