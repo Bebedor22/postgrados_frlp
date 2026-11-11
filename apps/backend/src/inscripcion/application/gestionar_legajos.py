@@ -10,6 +10,9 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Optional
 
+from src.gestion_documental.domain.entities import RequisitoDocumental
+from src.gestion_documental.domain.repo import DocumentoRepository
+from src.inscripcion.application.inscripcion_por_pasos import requisitos_de_documentos
 from src.inscripcion.domain.entities import DIAS_RESERVA_VACANTE, EstadoLegajo, Legajo
 from src.inscripcion.domain.repo import FiltrosLegajos, LegajoRepository
 from src.oferta_academica.domain.repo import CohorteRepository
@@ -27,6 +30,7 @@ class DetalleLegajo:
     formulario: object  # FormularioInscripcion
     historial: list
     reserva_vence_el: Optional[date]
+    documentos: list[RequisitoDocumental]
 
 
 # ── Bandeja ──────────────────────────────────────────────────────────────────
@@ -41,8 +45,11 @@ async def resumen_por_estado(repo: LegajoRepository, cohorte_id: Optional[str] =
     return {estado.value: conteo.get(estado.value, 0) for estado in EstadoLegajo}
 
 
-async def obtener_detalle(legajo_id: str, repo: LegajoRepository) -> DetalleLegajo:
+async def obtener_detalle(
+        legajo_id: str, repo: LegajoRepository, repo_documentos: DocumentoRepository
+) -> DetalleLegajo:
     legajo = await repo.obtener_por_id(legajo_id)
+    formulario = await repo.obtener_formulario(legajo_id)
     reserva_vence_el = None
     if legajo.estado == EstadoLegajo.COMPLETADO:
         fecha = await repo.fecha_de_estado(legajo_id, EstadoLegajo.COMPLETADO)
@@ -50,9 +57,10 @@ async def obtener_detalle(legajo_id: str, repo: LegajoRepository) -> DetalleLega
             reserva_vence_el = Legajo.vencimiento_de_reserva(fecha.date())
     return DetalleLegajo(
         legajo=legajo,
-        formulario=await repo.obtener_formulario(legajo_id),
+        formulario=formulario,
         historial=await repo.historial(legajo_id),
         reserva_vence_el=reserva_vence_el,
+        documentos=await requisitos_de_documentos(legajo_id, formulario, repo_documentos),
     )
 
 

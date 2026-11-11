@@ -4,7 +4,8 @@ Flujo del aspirante (sin usuario ni contraseña):
 1. iniciar_inscripcion  → crea el legajo en BORRADOR y devuelve un token secreto.
 2. guardar_progreso     → guarda los datos de cualquier paso, todas las veces que quiera.
 3. consultar_tramite    → con el token ve sus datos, el % completado y el estado.
-4. confirmar_inscripcion → con el formulario completo, el legajo pasa a PENDIENTE.
+4. confirmar_inscripcion → con el formulario completo y los PDFs obligatorios, el
+   legajo pasa a PENDIENTE.
 
 El token funciona como un link personal: solo se guarda su hash (SHA-256), así que
 quien lea la base de datos no puede usarlo.
@@ -16,6 +17,12 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Optional
 
+from src.gestion_documental.domain.entities import (
+    RequisitoDocumental,
+    documentos_faltantes,
+    requisitos_documentales,
+)
+from src.gestion_documental.domain.repo import DocumentoRepository
 from src.inscripcion.domain.entities import CambioDeEstado, EstadoLegajo, Legajo, TipoCarrera
 from src.inscripcion.domain.formulario import DatosInvalidos, FormularioInscripcion
 from src.inscripcion.domain.repo import LegajoRepository
@@ -36,6 +43,7 @@ class Tramite:
     legajo: Legajo
     formulario: FormularioInscripcion
     historial: list[CambioDeEstado]
+    documentos: list[RequisitoDocumental]
 
 
 # ── Token de seguimiento ─────────────────────────────────────────────────────
@@ -50,7 +58,8 @@ def hashear_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-async def _legajo_por_token(token: str, repo: LegajoRepository) -> Legajo:
+async def legajo_por_token(token: str, repo: LegajoRepository) -> Legajo:
+    """El legajo dueño del link personal. Lanza TramiteNoEncontrado si el token no existe."""
     legajo = await repo.obtener_por_token(hashear_token(token))
     if legajo is None:
         raise TramiteNoEncontrado()
@@ -121,10 +130,14 @@ async def iniciar_inscripcion(
 
 
 async def guardar_progreso(
-        token: str, cambios: dict, repo: LegajoRepository, hoy: Optional[date] = None
+        token: str,
+        cambios: dict,
+        repo: LegajoRepository,
+        repo_documentos: DocumentoRepository,
+        hoy: Optional[date] = None,
 ) -> Tramite:
     """Guarda los campos recibidos. Se puede llamar muchas veces ("cargar y guardar")."""
-    legajo = await _legajo_por_token(token, repo)
+    legajo = await legajo_por_token(token, repo)
     if not legajo.puede_editar_formulario():
         raise ReglaDeNegocioViolada(
             f"El formulario no se puede modificar con el legajo en estado {legajo.estado.value}"
@@ -142,22 +155,38 @@ async def guardar_progreso(
     formulario = await repo.obtener_formulario(legajo.id)
     formulario.actualizar(cambios, hoy)
     await repo.guardar_formulario(legajo.id, formulario)
-    return await consultar_tramite(token, repo)
+    return await consultar_tramite(token, repo, repo_documentos)
 
 
-async def consultar_tramite(token: str, repo: LegajoRepository) -> Tramite:
-    """Estado del trámite: datos cargados, % completado e historial de estados."""
-    legajo = await _legajo_por_token(token, repo)
-    return Tramite(
-        legajo=legajo,
-        formulario=await repo.obtener_formulario(legajo.id),
-        historial=await repo.historial(legajo.id),
+async def requisitos_de_documentos(
+        legajo_id: str, formulario: FormularioInscripcion, repo_documentos: DocumentoRepository
+) -> list[RequisitoDocumental]:
+    """Documentos que pide el legajo según lo que declaró el aspirante, y cuáles ya subió."""
+    presentados = await repo_documentos.listar_por_legajo(legajo_id)
+    return requisitos_documentales(
+        solicita_beca=formulario.solicita_beca,
+        tiene_titulo_posgrado=bool(formulario.titulo_posgrado),
+        presentados=presentados,
     )
 
 
-async def confirmar_inscripcion(token: str, repo: LegajoRepository) -> Tramite:
+async def consultar_tramite(token: str, repo: LegajoRepository, repo_documentos: DocumentoRepository) -> Tramite:
+    """Estado del trámite: datos cargados, % completado, documentos e historial de estados."""
+    legajo = await legajo_por_token(token, repo)
+    formulario = await repo.obtener_formulario(legajo.id)
+    return Tramite(
+        legajo=legajo,
+        formulario=formulario,
+        historial=await repo.historial(legajo.id),
+        documentos=await requisitos_de_documentos(legajo.id, formulario, repo_documentos),
+    )
+
+
+async def confirmar_inscripcion(
+        token: str, repo: LegajoRepository, repo_documentos: DocumentoRepository
+) -> Tramite:
     """Envía el formulario a revisión: BORRADOR (u OBSERVADO) → PENDIENTE."""
-    legajo = await _legajo_por_token(token, repo)
+    legajo = await legajo_por_token(token, repo)
     if not legajo.puede_editar_formulario():
         raise ReglaDeNegocioViolada(f"El legajo ya fue enviado (estado {legajo.estado.value})")
 
@@ -165,6 +194,10 @@ async def confirmar_inscripcion(token: str, repo: LegajoRepository) -> Tramite:
     if not formulario.esta_completo():
         faltantes = [c for campos in formulario.faltantes_por_paso().values() for c in campos]
         raise ReglaDeNegocioViolada(f"Faltan completar: {', '.join(faltantes)}")
+    # RF-CORE-002: no se envía sin los PDFs obligatorios
+    requisitos = await requisitos_de_documentos(legajo.id, formulario, repo_documentos)
+    if faltan := documentos_faltantes(requisitos):
+        raise ReglaDeNegocioViolada(f"Faltan documentos: {', '.join(t.descripcion for t in faltan)}")
 
     comentario = "Inscripción enviada por el aspirante"
     if legajo.estado == EstadoLegajo.OBSERVADO:
@@ -174,4 +207,4 @@ async def confirmar_inscripcion(token: str, repo: LegajoRepository) -> Tramite:
         legajo.id, EstadoLegajo.PENDIENTE, comentario=comentario, usuario_email=str(legajo.email)
     )
     await repo.registrar_confirmacion(legajo.id, datetime.now())
-    return await consultar_tramite(token, repo)
+    return await consultar_tramite(token, repo, repo_documentos)

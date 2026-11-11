@@ -7,7 +7,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from src.gestion_documental.infrastructure.pg_repository import PostgresDocumentoRepository
 from src.inscripcion.application.gestionar_legajos import (
     ComentarioObligatorio,
     aprobar_legajo,
@@ -135,8 +135,8 @@ async def api_vencer_reservas(db: AsyncSession = Depends(get_db, scope="function
     description="Todos los datos del formulario, el % completado, el historial de estados y la reserva de vacante.",
 )
 async def api_detalle_legajo(legajo_id: str, db: AsyncSession = Depends(get_db, scope="function"), _usuario: dict = Depends(puede_leer)):
-    detalle = await obtener_detalle(legajo_id, PostgresLegajoRepository(db))
-    base = tramite_a_respuesta(detalle.legajo, detalle.formulario, detalle.historial)
+    detalle = await obtener_detalle(legajo_id, PostgresLegajoRepository(db), PostgresDocumentoRepository(db))
+    base = tramite_a_respuesta(detalle.legajo, detalle.formulario, detalle.historial, detalle.documentos)
     return LegajoDetalleResponse(**base.model_dump(), reserva_vence_el=detalle.reserva_vence_el)
 
 

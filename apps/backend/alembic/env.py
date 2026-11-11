@@ -17,6 +17,7 @@ from src.shared.database.connection import Base
 
 # ── Modelos ORM de cada módulo (registrarlos acá) ────────────────────────────
 import src.autenticacion.infrastructure.orm_models  # noqa: F401
+import src.gestion_documental.infrastructure.orm_models  # noqa: F401
 import src.inscripcion.infrastructure.orm_models  # noqa: F401
 import src.oferta_academica.infrastructure.orm_models  # noqa: F401
 

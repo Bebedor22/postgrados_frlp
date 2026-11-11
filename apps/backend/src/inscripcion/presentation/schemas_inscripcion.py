@@ -3,6 +3,7 @@ from datetime import date, datetime
 from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
+from src.gestion_documental.presentation.schemas import RequisitoDocumentalResponse
 
 ComoConocio = Literal["SITIO_WEB", "OTROS_SITIOS_WEB", "EGRESADOS_UTN", "COLEGAS", "OTROS"]
 
@@ -80,6 +81,9 @@ class TramiteResponse(BaseModel):
     datos: dict
     progreso: ProgresoResponse
     historial: list[CambioDeEstadoResponse]
+    documentos: list[RequisitoDocumentalResponse] = Field(
+        description="Documentos que pide el legajo (RF-CORE-002) y cuáles ya se subieron"
+    )
 
 
 class InscripcionIniciadaResponse(BaseModel):

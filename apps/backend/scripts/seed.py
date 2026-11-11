@@ -7,7 +7,8 @@ Crea:
 - los 4 usuarios de prueba (coordinación, docente, CPR y Dirección);
 - 3 carreras (una de cada tipo);
 - 2 cohortes: 2026 (inscripción cerrada) y 2027 (inscripción abierta);
-- 16 aspirantes ficticios en la Cohorte 2027, repartidos en todos los estados del workflow.
+- 16 aspirantes ficticios en la Cohorte 2027, repartidos en todos los estados del workflow,
+  con sus documentos PDF de ejemplo (los que ya enviaron la inscripción).
 
 Usa los mismos casos de uso que la API, así los datos respetan todas las reglas
 del dominio. Se puede correr más de una vez: lo que ya existe no se duplica.
@@ -16,6 +17,10 @@ import asyncio
 from datetime import date
 
 from src.autenticacion.application.registrar_usuario import UsuarioYaExiste, registrar_usuario
+from src.gestion_documental.application.gestionar_documentos import subir_documento
+from src.gestion_documental.domain.entities import documentos_faltantes
+from src.gestion_documental.infrastructure.file_storage import AlmacenamientoLocal
+from src.gestion_documental.infrastructure.pg_repository import PostgresDocumentoRepository
 from src.autenticacion.infrastructure.bcrypt_hasher import BcryptHasher
 from src.autenticacion.infrastructure.pg_repository import PostgresUsuarioRepository
 from src.inscripcion.application.gestionar_legajos import (
@@ -27,6 +32,7 @@ from src.inscripcion.application.gestionar_legajos import (
 )
 from src.inscripcion.application.inscripcion_por_pasos import (
     confirmar_inscripcion,
+    consultar_tramite,
     guardar_progreso,
     iniciar_inscripcion,
 )
@@ -85,6 +91,45 @@ FORMULARIO_BASE = {
     "motivacion": "Quiero profundizar mi formación y aplicarla en mi trabajo actual.",
     "trabaja_en_area": True,
 }
+
+def pdf_de_ejemplo(texto: str) -> bytes:
+    """Un PDF mínimo de una página con un texto (para los documentos de demo)."""
+    texto = texto.encode("latin-1", "replace").decode("latin-1").replace("(", "[").replace(")", "]")
+    contenido = f"BT /F1 18 Tf 60 760 Td ({texto}) Tj ET".encode("latin-1")
+    objetos = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R "
+        b"/Resources << /Font << /F1 5 0 R >> >> >>",
+        b"<< /Length %d >>\nstream\n" % len(contenido) + contenido + b"\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+    ]
+    pdf = bytearray(b"%PDF-1.4\n")
+    posiciones = []
+    for numero, objeto in enumerate(objetos, start=1):
+        posiciones.append(len(pdf))
+        pdf += b"%d 0 obj\n" % numero + objeto + b"\nendobj\n"
+    inicio_xref = len(pdf)
+    pdf += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objetos) + 1)
+    for posicion in posiciones:
+        pdf += b"%010d 00000 n \n" % posicion
+    pdf += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (len(objetos) + 1, inicio_xref)
+    return bytes(pdf)
+
+
+async def subir_documentos_de_ejemplo(token: str, apellido: str, session) -> None:
+    """Sube un PDF de ejemplo por cada documento obligatorio que falte."""
+    repo_legajos = PostgresLegajoRepository(session)
+    repo_documentos = PostgresDocumentoRepository(session)
+    almacenamiento = AlmacenamientoLocal(get_settings().storage_path)
+    tramite = await consultar_tramite(token, repo_legajos, repo_documentos)
+    for tipo in documentos_faltantes(tramite.documentos):
+        await subir_documento(
+            token, tipo.value, f"{tipo.value.lower()}_{apellido.lower()}.pdf",
+            pdf_de_ejemplo(f"{tipo.descripcion} - {apellido} (documento de ejemplo)"),
+            repo_legajos, repo_documentos, almacenamiento,
+        )
+
 
 OBSERVACIONES = {
     "Ríos": "Falta adjuntar la copia del título de grado legalizada.",
@@ -146,6 +191,7 @@ async def crear_aspirante(datos: tuple, ids_carreras: list[str], cohorte_id: str
     apellido, nombre, dni, i_carrera, estado, beca = datos
     async with AsyncSessionLocal() as session:
         repo = PostgresLegajoRepository(session)
+        repo_documentos = PostgresDocumentoRepository(session)
         legajo, token = await iniciar_inscripcion(
             cohorte_id=cohorte_id,
             carrera_id=ids_carreras[i_carrera],
@@ -167,12 +213,13 @@ async def crear_aspirante(datos: tuple, ids_carreras: list[str], cohorte_id: str
             formulario.update(solicita_beca=True, tipo_beca=beca)
         if estado == "BORRADOR_AVANZADO":  # completó hasta el paso 2
             formulario = {k: v for k, v in formulario.items() if k not in ("titulo_grado", "motivacion", "como_conocio")}
-        await guardar_progreso(token, formulario, repo)
+        await guardar_progreso(token, formulario, repo, repo_documentos)
         if estado == "BORRADOR_AVANZADO":
             await session.commit()
             return apellido, token
 
-        await confirmar_inscripcion(token, repo)  # → PENDIENTE
+        await subir_documentos_de_ejemplo(token, apellido, session)
+        await confirmar_inscripcion(token, repo, repo_documentos)  # → PENDIENTE
         if estado == "OBSERVADO":
             await observar_legajo(legajo.id, OBSERVACIONES[apellido], repo, COORDINADOR)
         elif estado != "PENDIENTE":

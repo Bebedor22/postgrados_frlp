@@ -3,7 +3,8 @@
 Solo en la capa de infraestructura vive SQLAlchemy. Todos los modelos usan la
 misma `Base` declarada en `src/shared/database/connection.py`, así Alembic y
 `crear_todas_las_tablas()` ven todas las tablas.
-Las tablas `cohortes` y `carreras` están en `src/oferta_academica/infrastructure/orm_models.py`.
+Las tablas `cohortes` y `carreras` están en `src/oferta_academica/infrastructure/orm_models.py`
+y la de `documentos` en `src/gestion_documental/infrastructure/orm_models.py`.
 """
 import uuid
 from datetime import datetime
@@ -56,8 +57,7 @@ class LegajoModel(Base):
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
-    # Relaciones (la cohorte vive en el módulo oferta_academica: solo se referencia por FK)
-    documentos = relationship("DocumentoModel", back_populates="legajo", cascade="all, delete-orphan")
+    # Relaciones (la cohorte y los documentos viven en otros módulos: se vinculan solo por FK)
     auditoria = relationship("AuditoriaLegajoModel", back_populates="legajo", cascade="all, delete-orphan")
     datos = relationship(
         "DatosAspiranteModel", back_populates="legajo", uselist=False, cascade="all, delete-orphan"
@@ -91,31 +91,6 @@ class LegajoModel(Base):
     def __repr__(self) -> str:
         return f"<Legajo {self.numero_legajo} - {self.apellido}, {self.nombre}>"
 
-
-class DocumentoModel(Base):
-    __tablename__ = "documentos"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    legajo_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("legajos.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    tipo = Column(String(50), nullable=False)
-    path_storage = Column(String(500), nullable=False)  # Nunca pública, solo vía endpoint
-    nombre_original = Column(String(255), nullable=False)
-    checksum_sha256 = Column(String(64), nullable=False)
-    tamanio_bytes = Column(Integer, nullable=True)
-    fecha_subida = Column(DateTime, default=datetime.now)
-
-    legajo = relationship("LegajoModel", back_populates="documentos")
-
-    __table_args__ = (Index("idx_docs_legajo", "legajo_id"),)
-
-    def __repr__(self) -> str:
-        return f"<Documento {self.id} para legajo {self.legajo_id}>"
-
-
 class AuditoriaLegajoModel(Base):
     """Historial de cambios de estado de cada legajo (quién, cuándo y por qué)."""
 
@@ -134,7 +109,6 @@ class AuditoriaLegajoModel(Base):
     created_at = Column(DateTime, default=datetime.now)
 
     legajo = relationship("LegajoModel", back_populates="auditoria")
-
 
 class DatosAspiranteModel(Base):
     """Datos del formulario de inscripción (relación 1 a 1 con el legajo).

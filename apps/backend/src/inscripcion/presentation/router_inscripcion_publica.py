@@ -5,6 +5,7 @@ No requieren usuario: el aspirante se identifica con el token de su link persona
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.gestion_documental.infrastructure.pg_repository import PostgresDocumentoRepository
 from src.inscripcion.application.inscripcion_por_pasos import (
     Tramite,
     TramiteNoEncontrado,
@@ -32,7 +33,7 @@ router = APIRouter()
 
 
 def _a_respuesta(tramite: Tramite) -> TramiteResponse:
-    return tramite_a_respuesta(tramite.legajo, tramite.formulario, tramite.historial)
+    return tramite_a_respuesta(tramite.legajo, tramite.formulario, tramite.historial, tramite.documentos)
 
 
 def _error_http(error: Exception) -> HTTPException:
@@ -77,11 +78,16 @@ async def api_iniciar_inscripcion(datos: InicioInscripcion, db: AsyncSession = D
     "/{token}",
     response_model=TramiteResponse,
     summary="Estado del trámite",
-    description="Datos cargados, porcentaje completado, campos faltantes por paso e historial de estados.",
+    description=(
+        "Datos cargados, porcentaje completado, campos faltantes por paso, documentos pedidos "
+        "y presentados, e historial de estados."
+    ),
 )
 async def api_consultar_tramite(token: str, db: AsyncSession = Depends(get_db, scope="function")):
     try:
-        return _a_respuesta(await consultar_tramite(token, PostgresLegajoRepository(db)))
+        return _a_respuesta(
+            await consultar_tramite(token, PostgresLegajoRepository(db), PostgresDocumentoRepository(db))
+        )
     except TramiteNoEncontrado as e:
         raise _error_http(e)
 
@@ -95,7 +101,9 @@ async def api_consultar_tramite(token: str, db: AsyncSession = Depends(get_db, s
 async def api_guardar_progreso(token: str, datos: DatosFormulario, db: AsyncSession = Depends(get_db, scope="function")):
     try:
         cambios = datos.model_dump(exclude_unset=True)
-        return _a_respuesta(await guardar_progreso(token, cambios, PostgresLegajoRepository(db)))
+        return _a_respuesta(
+            await guardar_progreso(token, cambios, PostgresLegajoRepository(db), PostgresDocumentoRepository(db))
+        )
     except (TramiteNoEncontrado, DatosInvalidos, ReglaDeNegocioViolada) as e:
         raise _error_http(e)
 
@@ -104,10 +112,15 @@ async def api_guardar_progreso(token: str, datos: DatosFormulario, db: AsyncSess
     "/{token}/confirmar",
     response_model=TramiteResponse,
     summary="Enviar la inscripción a revisión",
-    description="Con el formulario completo, el legajo pasa de BORRADOR (u OBSERVADO) a PENDIENTE.",
+    description=(
+        "Con el formulario completo y los PDFs obligatorios subidos, el legajo pasa de BORRADOR "
+        "(u OBSERVADO) a PENDIENTE."
+    ),
 )
 async def api_confirmar_inscripcion(token: str, db: AsyncSession = Depends(get_db, scope="function")):
     try:
-        return _a_respuesta(await confirmar_inscripcion(token, PostgresLegajoRepository(db)))
+        return _a_respuesta(
+            await confirmar_inscripcion(token, PostgresLegajoRepository(db), PostgresDocumentoRepository(db))
+        )
     except (TramiteNoEncontrado, ReglaDeNegocioViolada) as e:
         raise _error_http(e)

@@ -16,6 +16,7 @@ from src.carga_academica.presentation.router import router as router_carga_acade
 from src.seguimiento_graduacion.presentation.router import router as router_seguimiento
 from src.analytics.presentation.router import router as router_analytics
 from src.gestion_documental.presentation.router import router as router_documental
+from src.gestion_documental.presentation.router import router_aspirante as router_documentos_aspirante
 
 app = FastAPI(
     title="Sistema de Posgrado - Backend",
@@ -56,6 +57,11 @@ app.include_router(
     tags=["Inscripción (aspirante)"],
 )
 app.include_router(
+    router_documentos_aspirante,
+    prefix="/api/v1/inscripciones",
+    tags=["Documentos (aspirante)"],
+)
+app.include_router(
     router_inscripcion,
     prefix="/api/v1/legajos",
     tags=["Legajos (conducción)"],
@@ -78,7 +84,7 @@ app.include_router(
 app.include_router(
     router_documental,
     prefix="/api/v1/documentos",
-    tags=["Gestión Documental"],
+    tags=["Documentos (conducción)"],
 )
 
 @app.exception_handler(LegajoNoEncontrado)
