@@ -1,14 +1,17 @@
 /**
  * Estado del trámite del aspirante: se entra con el link personal (token).
- * Muestra el estado, el porcentaje completado, lo que falta, las observaciones
- * del coordinador y el historial. Si se puede editar, permite seguir completando.
+ * Muestra el estado, el porcentaje completado, lo que falta, los documentos
+ * presentados, las observaciones del coordinador y el historial. Si se puede
+ * editar, permite seguir completando.
  */
 import {Link, useLocalSearchParams, useRouter} from "expo-router";
 import {useEffect, useState} from "react";
 import {Platform, Pressable, Text, View} from "react-native";
 import {Cargando, MensajeError} from "../../src/components/wizard/Campos";
+import {ListaDocumentos} from "../../src/components/wizard/ListaDocumentos";
 import {WizardShell, wizardStyles} from "../../src/components/wizard/WizardShell";
-import {ApiError, Tramite, consultarTramite} from "../../src/lib/api";
+import {ApiError, Tramite, consultarTramite, urlDocumentoPropio} from "../../src/lib/api";
+import {abrirEnPestania} from "../../src/lib/documentos";
 import {ESTADOS, describirFaltantes} from "../../src/lib/formulario";
 import {guardarTokenTramite} from "../../src/lib/sesion";
 
@@ -40,6 +43,7 @@ export default function TramiteScreen() {
     const pasoPendiente = tramite
         ? Object.entries(tramite.progreso.faltantes_por_paso).find(([, campos]) => campos.length > 0)?.[0] ?? "4"
         : "1";
+    const documentosFaltantes = tramite?.documentos.filter((d) => d.obligatorio && !d.presentado) ?? [];
     const link = Platform.OS === "web" && typeof window !== "undefined" ? window.location.href : `/tramite/${token}`;
 
     return (
@@ -99,14 +103,27 @@ export default function TramiteScreen() {
                         <Text style={{fontSize: 13, color: "#374151", marginTop: 8}}>
                             {tramite.progreso.porcentaje}% completado
                         </Text>
-                        {tramite.puede_editar && !tramite.progreso.completo ? (
+                        {tramite.puede_editar && (!tramite.progreso.completo || documentosFaltantes.length > 0) ? (
                             <View style={{marginTop: 10}}>
                                 <Text style={wizardStyles.label}>Te falta completar:</Text>
                                 {describirFaltantes(tramite.progreso.faltantes_por_paso).map((linea) => (
                                     <Text key={linea} style={{fontSize: 13, color: "#4b5563", marginTop: 2}}>• {linea}</Text>
                                 ))}
+                                {documentosFaltantes.length > 0 ? (
+                                    <Text style={{fontSize: 13, color: "#4b5563", marginTop: 2}}>
+                                        • Documentos: {documentosFaltantes.map((d) => d.descripcion).join(", ")}
+                                    </Text>
+                                ) : null}
                             </View>
                         ) : null}
+                    </View>
+
+                    <View style={wizardStyles.section}>
+                        <Text style={wizardStyles.sectionTitle}>Documentación</Text>
+                        <ListaDocumentos
+                            requisitos={tramite.documentos}
+                            alVer={(d) => abrirEnPestania(urlDocumentoPropio(token, d.id))}
+                        />
                     </View>
 
                     <View style={wizardStyles.section}>

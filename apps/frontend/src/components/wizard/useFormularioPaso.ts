@@ -5,6 +5,7 @@
  * - Cada input queda conectado a `valores` (y a su mensaje de error).
  * - `validarPaso` marca en rojo los obligatorios vacíos o mal escritos.
  * - `guardarYSeguir` manda los campos del paso (PATCH) y navega.
+ * - `recargar` vuelve a traer el trámite (por ejemplo, después de subir un PDF).
  */
 import {useRouter} from "expo-router";
 import {useEffect, useState} from "react";
@@ -87,8 +88,16 @@ export function useFormularioPaso() {
         }
     }
 
+    /** Vuelve a pedir el trámite al backend (sin tocar lo que se está escribiendo). */
+    async function recargar(): Promise<Tramite | null> {
+        if (!token) return null;
+        const actualizado = await consultarTramite(token);
+        setTramite(actualizado);
+        return actualizado;
+    }
+
     return {
         token, tramite, valores, campo, set, errores, error, setError,
-        guardando, setGuardando, validarPaso, guardarYSeguir,
+        guardando, setGuardando, validarPaso, guardarYSeguir, recargar,
     };
 }

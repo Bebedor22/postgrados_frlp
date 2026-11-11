@@ -29,7 +29,8 @@ function mensajeDeError(detail: unknown, status: number): string {
 }
 
 async function pedir<T>(ruta: string, opciones: RequestInit = {}, conSesion = false): Promise<T> {
-    const headers: Record<string, string> = {"Content-Type": "application/json"};
+    // Con FormData (subida de archivos) el navegador arma el Content-Type con su "boundary"
+    const headers: Record<string, string> = opciones.body instanceof FormData ? {} : {"Content-Type": "application/json"};
     if (conSesion) {
         const token = obtenerTokenSesion();
         if (token) headers.Authorization = `Bearer ${token}`;
@@ -83,6 +84,25 @@ export interface CambioDeEstado {
     fecha: string;
 }
 
+export interface DocumentoSubido {
+    id: string;
+    tipo: string;
+    descripcion: string;
+    nombre_original: string;
+    tamanio_bytes: number;
+    checksum_sha256: string;
+    fecha_subida: string | null;
+}
+
+/** Un documento que pide el legajo (RF-CORE-002) y, si ya se subió, sus datos. */
+export interface RequisitoDocumental {
+    tipo: string;
+    descripcion: string;
+    obligatorio: boolean;
+    presentado: boolean;
+    documento: DocumentoSubido | null;
+}
+
 export interface Tramite {
     legajo_id: string;
     numero_legajo: string;
@@ -93,6 +113,7 @@ export interface Tramite {
     datos: Record<string, string | number | boolean | null>;
     progreso: {porcentaje: number; completo: boolean; faltantes_por_paso: Record<string, string[]>};
     historial: CambioDeEstado[];
+    documentos: RequisitoDocumental[];
 }
 
 export interface InicioInscripcion {
@@ -133,6 +154,22 @@ export const guardarProgreso = (token: string, cambios: Record<string, unknown>)
 
 export const confirmarInscripcion = (token: string) =>
     pedir<Tramite>(`/inscripciones/${token}/confirmar`, {method: "POST"});
+
+// ── Documentos del aspirante (con el token del trámite) ──────────────────────
+
+export function subirDocumento(token: string, tipo: string, archivo: Blob, nombre: string) {
+    const formulario = new FormData();
+    formulario.append("tipo", tipo);
+    formulario.append("archivo", archivo, nombre);
+    return pedir<DocumentoSubido>(`/inscripciones/${token}/documentos`, {method: "POST", body: formulario});
+}
+
+export const eliminarDocumento = (token: string, documentoId: string) =>
+    pedir<null>(`/inscripciones/${token}/documentos/${documentoId}`, {method: "DELETE"});
+
+/** El link del aspirante sirve de permiso: el PDF se puede abrir directo en otra pestaña. */
+export const urlDocumentoPropio = (token: string, documentoId: string) =>
+    `${API_URL}/inscripciones/${token}/documentos/${documentoId}/descarga`;
 
 // ── Conducción: cohortes y bandeja de legajos (requieren login) ──────────────
 
@@ -183,6 +220,24 @@ export const resumenLegajos = (cohorteId?: string) =>
 export type DetalleLegajo = Tramite & {reserva_vence_el: string | null};
 
 export const detalleLegajo = (id: string) => pedir<DetalleLegajo>(`/legajos/${id}`, {}, true);
+
+/** Trae un PDF con el token de sesión (la conducción no puede abrir el link directo). */
+export async function descargarDocumento(documentoId: string): Promise<Blob> {
+    let respuesta: Response;
+    try {
+        respuesta = await fetch(`${API_URL}/documentos/${documentoId}/download`, {
+            headers: {Authorization: `Bearer ${obtenerTokenSesion() ?? ""}`},
+        });
+    } catch {
+        throw new ApiError(0, "No se pudo conectar con el servidor.");
+    }
+    if (!respuesta.ok) {
+        if (respuesta.status === 401) cerrarSesion();
+        const cuerpo = await respuesta.json().catch(() => null);
+        throw new ApiError(respuesta.status, mensajeDeError(cuerpo?.detail, respuesta.status));
+    }
+    return respuesta.blob();
+}
 
 export type AccionLegajo = "revisar" | "observar" | "aprobar" | "rechazar" | "matricular";
 

@@ -1,6 +1,6 @@
 /**
  * Detalle de un legajo para la conducción: todos los datos del aspirante,
- * la carga del formulario, el historial y las acciones del workflow.
+ * la carga del formulario, los documentos PDF, el historial y las acciones del workflow.
  * Las acciones que se muestran dependen del estado; el backend vuelve a
  * validar cada cambio (si no corresponde responde 409).
  */
@@ -10,7 +10,11 @@ import {ActivityIndicator, Text, TextInput, View, useWindowDimensions} from "rea
 import {
     Boton, InsigniaEstado, PortalConduccion, Tarjeta, useUsuarioConduccion,
 } from "../../../src/components/conduccion/PortalConduccion";
-import {AccionLegajo, ApiError, DetalleLegajo, accionLegajo, detalleLegajo, listarCarreras} from "../../../src/lib/api";
+import {ListaDocumentos} from "../../../src/components/wizard/ListaDocumentos";
+import {
+    AccionLegajo, ApiError, DetalleLegajo, accionLegajo, descargarDocumento, detalleLegajo, listarCarreras,
+} from "../../../src/lib/api";
+import {abrirPdfDescargado} from "../../../src/lib/documentos";
 import {ESTADOS, OPCIONES_COMO_CONOCIO, isoAFecha} from "../../../src/lib/formulario";
 
 type Dato = [etiqueta: string, valor: string];
@@ -106,6 +110,12 @@ export default function DetalleLegajoScreen() {
         }
     }
 
+    function verDocumento(documentoId: string) {
+        setError(null);
+        abrirPdfDescargado(() => descargarDocumento(documentoId)).catch((e: ApiError) => setError(e.message));
+    }
+
+    const documentosFaltantes = legajo?.documentos.filter((d) => d.obligatorio && !d.presentado).length ?? 0;
     const estado = legajo ? ESTADOS[legajo.estado] ?? {texto: legajo.estado, color: "#374151", fondo: "#f3f4f6"} : null;
     const esCoordinador = usuario?.rol === "COORDINADOR";
     const e = legajo?.estado;
@@ -223,8 +233,16 @@ export default function DetalleLegajoScreen() {
                             ))}
                         </View>
 
-                        {/* Historial de estados */}
-                        <View style={{flex: 1, width: compacto ? "100%" : undefined}}>
+                        {/* Documentos e historial de estados */}
+                        <View style={{flex: 1, gap: 16, width: compacto ? "100%" : undefined}}>
+                            <Tarjeta titulo="Documentación">
+                                {documentosFaltantes > 0 ? (
+                                    <Text style={{fontSize: 12, color: "#b45309", marginBottom: 10}}>
+                                        Faltan {documentosFaltantes} documento{documentosFaltantes === 1 ? "" : "s"} obligatorio{documentosFaltantes === 1 ? "" : "s"}.
+                                    </Text>
+                                ) : null}
+                                <ListaDocumentos requisitos={legajo.documentos} alVer={(d) => verDocumento(d.id)}/>
+                            </Tarjeta>
                             <Tarjeta titulo="Historial">
                                 {[...legajo.historial].reverse().map((cambio, i) => (
                                     <View key={i} style={{flexDirection: "row", gap: 10, marginBottom: 12}}>
