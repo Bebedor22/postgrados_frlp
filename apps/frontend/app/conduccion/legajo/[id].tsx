@@ -76,7 +76,7 @@ export default function DetalleLegajoScreen() {
     const [carrera, setCarrera] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [exito, setExito] = useState<string | null>(null);
-    const [pidiendoTexto, setPidiendoTexto] = useState<"observar" | "rechazar" | null>(null);
+    const [pidiendoTexto, setPidiendoTexto] = useState<"observar" | "rechazar" | "baja" | null>(null);
     const [comentario, setComentario] = useState("");
     const [procesando, setProcesando] = useState(false);
 
@@ -172,6 +172,9 @@ export default function DetalleLegajoScreen() {
                                     {e === "COMPLETADO" ? (
                                         <Boton texto="Matricular" tipo="exito" alPresionar={() => ejecutar("matricular", "El aspirante pasó a estudiante activo.")} deshabilitado={procesando}/>
                                     ) : null}
+                                    {e === "COMPLETADO" || e === "ACTIVO" ? (
+                                        <Boton texto="Dar de baja" tipo="peligro" alPresionar={() => setPidiendoTexto("baja")} deshabilitado={procesando}/>
+                                    ) : null}
                                 </View>
                             ) : (
                                 <Text style={{fontSize: 12, color: "#6b7280"}}>Vista de solo lectura (Dirección de Posgrado).</Text>
@@ -181,16 +184,22 @@ export default function DetalleLegajoScreen() {
                         {pidiendoTexto ? (
                             <View style={{marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: "#f3f4f6", gap: 8}}>
                                 <Text style={{fontSize: 13, fontWeight: "600", color: "#111827"}}>
-                                    {pidiendoTexto === "observar"
-                                        ? "¿Qué tiene que corregir el aspirante? (lo va a ver en su trámite)"
-                                        : "Motivo del rechazo"}
+                                    {{
+                                        observar: "¿Qué tiene que corregir el aspirante? (lo recibe por email y lo ve en su trámite)",
+                                        rechazar: "Motivo del rechazo",
+                                        baja: "Motivo de la baja",
+                                    }[pidiendoTexto]}
                                 </Text>
                                 <TextInput
                                     value={comentario}
                                     onChangeText={setComentario}
                                     multiline
                                     numberOfLines={3}
-                                    placeholder={pidiendoTexto === "observar" ? "Ej.: Falta adjuntar la copia del título de grado" : "Ej.: La documentación presentada no es válida"}
+                                    placeholder={{
+                                        observar: "Ej.: Falta adjuntar la copia del título de grado",
+                                        rechazar: "Ej.: La documentación presentada no es válida",
+                                        baja: "Ej.: El estudiante pidió la baja por motivos personales",
+                                    }[pidiendoTexto]}
                                     placeholderTextColor="#9ca3af"
                                     style={{
                                         borderWidth: 1, borderColor: "#d1d5db", borderRadius: 6, padding: 10,
@@ -202,13 +211,17 @@ export default function DetalleLegajoScreen() {
                                 </Text>
                                 <View style={{flexDirection: "row", gap: 8}}>
                                     <Boton
-                                        texto={pidiendoTexto === "observar" ? "Enviar observación" : "Confirmar rechazo"}
+                                        texto={{observar: "Enviar observación", rechazar: "Confirmar rechazo", baja: "Confirmar baja"}[pidiendoTexto]}
                                         tipo={pidiendoTexto === "observar" ? "principal" : "peligro"}
                                         deshabilitado={procesando || comentario.trim().length < 10}
                                         alPresionar={() =>
                                             ejecutar(
                                                 pidiendoTexto,
-                                                pidiendoTexto === "observar" ? "Observación enviada al aspirante." : "Legajo rechazado.",
+                                                {
+                                                    observar: "Observación enviada al aspirante.",
+                                                    rechazar: "Legajo rechazado.",
+                                                    baja: "El legajo fue dado de baja.",
+                                                }[pidiendoTexto],
                                             )
                                         }
                                     />

@@ -7,7 +7,7 @@ import {WizardShell, wizardStyles} from "../../src/components/wizard/WizardShell
 import {useFormularioPaso} from "../../src/components/wizard/useFormularioPaso";
 import {listarCarreras} from "../../src/lib/api";
 import {OPCIONES_COMO_CONOCIO} from "../../src/lib/formulario";
-import {Regla} from "../../src/lib/validaciones";
+import {LARGO_MINIMO_MOTIVACION, Regla} from "../../src/lib/validaciones";
 
 const SI_NO = [
     {valor: true, texto: "Sí"},
@@ -51,7 +51,7 @@ export default function Step3Screen() {
             titulo_grado: ["requerido"],
             institucion_grado: ["requerido"],
             anio_graduacion: ["requerido", "anio"],
-            motivacion: ["requerido"],
+            motivacion: ["requerido", "motivacion"],
             como_conocio: ["requerido"],
         };
         if (tienePosgrado) reglas.titulo_posgrado = ["requerido"];
@@ -119,8 +119,13 @@ export default function Step3Screen() {
                     style={wizardStyles.textArea}
                     {...campo("motivacion")}
                 />
-                <Text style={{fontSize: 12, color: "#6b7280", textAlign: "right", marginTop: 4}}>
-                    {motivacion.length}/{LARGO_MAXIMO_MOTIVACION} caracteres
+                <Text style={{
+                    fontSize: 12,
+                    textAlign: "right",
+                    marginTop: 4,
+                    color: motivacion.trim().length >= LARGO_MINIMO_MOTIVACION ? "#047857" : "#6b7280",
+                }}>
+                    {motivacion.length}/{LARGO_MAXIMO_MOTIVACION} caracteres · mínimo {LARGO_MINIMO_MOTIVACION}
                 </Text>
 
                 <View style={{marginTop: 16}}>

@@ -1,7 +1,7 @@
 """Casos de uso del equipo de conducción sobre los legajos.
 
 - Bandeja: listado por cohorte con filtros y búsqueda individual, y resumen por estado.
-- Workflow: revisar, observar, aprobar, rechazar y matricular (ARQUITECTURA.md §6).
+- Workflow: revisar, observar, aprobar, rechazar, matricular y dar de baja (ARQUITECTURA.md §6).
 - BR-005: vencer las reservas de vacante que pasaron 30 días en COMPLETADO.
 
 Cada cambio de estado queda en la auditoría con el email de quien lo hizo, y se
@@ -14,7 +14,13 @@ from typing import Optional
 from src.gestion_documental.domain.entities import RequisitoDocumental
 from src.gestion_documental.domain.repo import DocumentoRepository
 from src.inscripcion.application.inscripcion_por_pasos import requisitos_de_documentos
-from src.inscripcion.domain.entities import DIAS_RESERVA_VACANTE, EstadoLegajo, Legajo
+from src.inscripcion.domain.entities import (
+    DIAS_RESERVA_VACANTE,
+    EstadoLegajo,
+    Legajo,
+    numero_de_legajo,
+    prefijo_de_legajo,
+)
 from src.inscripcion.domain.notificaciones import Notificador, SinNotificaciones
 from src.inscripcion.domain.repo import FiltrosLegajos, LegajoRepository
 from src.oferta_academica.domain.repo import CohorteRepository
@@ -129,17 +135,19 @@ async def aprobar_legajo(
         usuario_email: str,
         notificador: Notificador = SinNotificaciones(),
 ) -> Legajo:
-    """EN_REVISION → COMPLETADO y asigna el número de legajo definitivo (AA-NNNN).
+    """EN_REVISION → COMPLETADO y asigna el número de legajo definitivo.
 
-    AA son los dos últimos dígitos del año de la cohorte y NNNN es correlativo dentro
-    de ese año. Desde este momento corre la reserva de vacante de 30 días (BR-005).
+    Formato del SRS: AÑO-COHORTE-SECUENCIAL (ej.: 26-001-045). La cohorte es su número
+    dentro del año y el secuencial es correlativo dentro de la cohorte.
+    Desde este momento corre la reserva de vacante de 30 días (BR-005).
     """
     legajo = await repo.obtener_por_id(legajo_id)
     legajo.transicionar_a(EstadoLegajo.COMPLETADO)
 
     cohorte = await repo_cohortes.obtener_por_id(legajo.cohorte_id)
-    prefijo = f"{cohorte.anio % 100:02d}-"
-    numero = f"{prefijo}{await repo.siguiente_secuencial(prefijo):04d}"
+    numero_cohorte = await repo_cohortes.numero_en_el_anio(cohorte)
+    secuencial = await repo.siguiente_secuencial(prefijo_de_legajo(cohorte.anio, numero_cohorte))
+    numero = numero_de_legajo(cohorte.anio, numero_cohorte, secuencial)
     await repo.asignar_numero(legajo_id, numero)
 
     vence = Legajo.vencimiento_de_reserva(date.today())
@@ -165,6 +173,20 @@ async def matricular_legajo(
     )
     await repo.registrar_activacion(legajo_id, datetime.now())
     notificador.legajo_matriculado(legajo)
+    return legajo
+
+
+async def dar_de_baja(
+        legajo_id: str,
+        motivo: str,
+        repo: LegajoRepository,
+        usuario_email: str,
+        notificador: Notificador = SinNotificaciones(),
+) -> Legajo:
+    """COMPLETADO / ACTIVO → BAJA (estado terminal). Pide el motivo, que queda en la auditoría."""
+    motivo = _validar_comentario(motivo, "El motivo de la baja")
+    legajo = await _cambiar_estado(legajo_id, EstadoLegajo.BAJA, repo, usuario_email, f"Baja: {motivo}")
+    notificador.legajo_dado_de_baja(legajo, motivo)
     return legajo
 
 

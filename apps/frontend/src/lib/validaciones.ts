@@ -6,7 +6,10 @@
  * única barrera.
  */
 
-export type Regla = "requerido" | "email" | "fecha" | "anio" | "telefono" | "dni" | "pasaporte";
+export type Regla = "requerido" | "email" | "fecha" | "anio" | "telefono" | "dni" | "pasaporte" | "motivacion";
+
+/** REQ-CORE-001: "Motivación (texto libre, mínimo 50 caracteres)". */
+export const LARGO_MINIMO_MOTIVACION = 50;
 export type Errores = Record<string, string>;
 
 const MENSAJES: Record<Regla, string> = {
@@ -17,6 +20,7 @@ const MENSAJES: Record<Regla, string> = {
     telefono: "Ingresá solo números, espacios, guiones o +",
     dni: "El DNI tiene 7 u 8 números, sin puntos",
     pasaporte: "El pasaporte tiene entre 6 y 12 letras o números",
+    motivacion: `Escribí al menos ${LARGO_MINIMO_MOTIVACION} caracteres`,
 };
 
 function fechaValida(texto: string): boolean {
@@ -35,6 +39,7 @@ const CUMPLE: Record<Exclude<Regla, "requerido">, (v: string) => boolean> = {
     telefono: (v) => /^[\d\s()+-]{6,}$/.test(v),
     dni: (v) => /^\d{7,8}$/.test(v),
     pasaporte: (v) => /^[A-Za-z0-9]{6,12}$/.test(v),
+    motivacion: (v) => v.length >= LARGO_MINIMO_MOTIVACION,
 };
 
 /** Devuelve un mensaje por cada campo que no cumple sus reglas (vacío = todo bien). */

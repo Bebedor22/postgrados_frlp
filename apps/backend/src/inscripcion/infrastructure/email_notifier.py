@@ -82,6 +82,14 @@ class NotificadorEmail(Notificador):
             f"Ya sos estudiante activo/a. Tu número de legajo es {legajo.numero_legajo}.",
         )
 
+    def legajo_dado_de_baja(self, legajo: Legajo, motivo: str) -> None:
+        self._al_aspirante(
+            legajo,
+            "Baja de tu legajo",
+            f"Tu legajo N° {legajo.numero_legajo} fue dado de baja. Motivo:\n\n    {motivo}\n\n"
+            "Si creés que se trata de un error, comunicate con la Secretaría de Posgrado.",
+        )
+
     def reservas_vencidas(self, legajos: list[Legajo]) -> None:
         if not legajos:
             return

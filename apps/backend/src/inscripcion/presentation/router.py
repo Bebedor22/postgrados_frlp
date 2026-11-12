@@ -13,6 +13,7 @@ from src.inscripcion.application.gestionar_legajos import (
     ComentarioObligatorio,
     aprobar_legajo,
     buscar_legajos,
+    dar_de_baja,
     matricular_legajo,
     obtener_detalle,
     observar_legajo,
@@ -187,7 +188,10 @@ async def api_observar(
     "/{legajo_id}/aprobar",
     response_model=CambioEstadoResponse,
     summary="Aprobar (EN_REVISION → COMPLETADO)",
-    description="Asigna el número de legajo definitivo y empieza a correr la reserva de vacante de 30 días.",
+    description=(
+        "Asigna el número de legajo definitivo (AÑO-COHORTE-SECUENCIAL, ej.: 26-001-045) y empieza a correr "
+        "la reserva de vacante de 30 días."
+    ),
 )
 async def api_aprobar(
         legajo_id: str,
@@ -229,4 +233,20 @@ async def api_matricular(
         notificador: NotificadorEmail = Depends(get_notificador),
 ):
     caso = matricular_legajo(legajo_id, PostgresLegajoRepository(db), usuario["email"], notificador)
+    return _respuesta_cambio(await _ejecutar(caso))
+
+@router.post(
+    "/{legajo_id}/baja",
+    response_model=CambioEstadoResponse,
+    summary="Dar de baja (COMPLETADO / ACTIVO → BAJA)",
+    description="Pide el motivo (mínimo 10 caracteres), que queda en el historial y se le informa al estudiante.",
+)
+async def api_dar_de_baja(
+        legajo_id: str,
+        datos: MotivoRequest,
+        db: AsyncSession = Depends(get_db, scope="function"),
+        usuario: dict = Depends(puede_gestionar),
+        notificador: NotificadorEmail = Depends(get_notificador),
+):
+    caso = dar_de_baja(legajo_id, datos.motivo, PostgresLegajoRepository(db), usuario["email"], notificador)
     return _respuesta_cambio(await _ejecutar(caso))

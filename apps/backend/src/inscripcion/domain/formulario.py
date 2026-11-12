@@ -11,6 +11,7 @@ from typing import Optional
 
 COMO_CONOCIO_OPCIONES = ("SITIO_WEB", "OTROS_SITIOS_WEB", "EGRESADOS_UTN", "COLEGAS", "OTROS")
 TIPOS_DE_BECA = ("30", "100")
+LARGO_MINIMO_MOTIVACION = 50  # REQ-CORE-001: "Motivación (texto libre, mínimo 50 caracteres)"
 LARGO_MAXIMO_MOTIVACION = 500
 
 
@@ -92,9 +93,16 @@ class FormularioInscripcion:
             4: ["tipo_beca"] if self.solicita_beca else [],
         }
 
+    def _falta(self, campo: str) -> bool:
+        valor = getattr(self, campo)
+        if campo == "motivacion":
+            # Una motivación de menos de 50 caracteres cuenta como "sin completar"
+            return not valor or len(valor.strip()) < LARGO_MINIMO_MOTIVACION
+        return valor in (None, "")
+
     def faltantes_por_paso(self) -> dict[int, list[str]]:
         return {
-            paso: [campo for campo in campos if getattr(self, campo) in (None, "")]
+            paso: [campo for campo in campos if self._falta(campo)]
             for paso, campos in self._obligatorios_por_paso().items()
         }
 

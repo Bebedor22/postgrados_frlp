@@ -21,7 +21,7 @@ export const ETIQUETAS: Record<string, string> = {
     anio_graduacion: "Año de graduación",
     como_conocio: "Cómo conoció la oferta",
     como_conocio_detalle: "Detalle de cómo conoció la oferta",
-    motivacion: "Motivación",
+    motivacion: "Motivación (mínimo 50 caracteres)",
     tipo_beca: "Tipo de beca",
 };
 

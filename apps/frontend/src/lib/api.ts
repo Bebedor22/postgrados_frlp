@@ -239,12 +239,14 @@ export async function descargarDocumento(documentoId: string): Promise<Blob> {
     return respuesta.blob();
 }
 
-export type AccionLegajo = "revisar" | "observar" | "aprobar" | "rechazar" | "matricular";
+export type AccionLegajo = "revisar" | "observar" | "aprobar" | "rechazar" | "matricular" | "baja";
 
-/** Cambia el estado de un legajo. "observar" pide comentario y "rechazar" pide motivo. */
+/** Cambia el estado de un legajo. "observar" pide comentario; "rechazar" y "baja" piden motivo. */
 export function accionLegajo(id: string, accion: AccionLegajo, texto?: string) {
     const cuerpo =
-        accion === "observar" ? {comentario: texto} : accion === "rechazar" ? {motivo: texto} : undefined;
+        accion === "observar" ? {comentario: texto}
+            : accion === "rechazar" || accion === "baja" ? {motivo: texto}
+                : undefined;
     return pedir<{legajo_id: string; numero_legajo: string; estado: string}>(
         `/legajos/${id}/${accion}`,
         {method: "POST", body: cuerpo ? JSON.stringify(cuerpo) : undefined},

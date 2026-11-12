@@ -92,7 +92,16 @@ class PostgresCohorteRepository:
         modelo.abierta = cohorte.inscripcion_abierta
         await self._session.flush()
         return cohorte
-
+    
+    async def numero_en_el_anio(self, cohorte: Cohorte) -> int:
+        result = await self._session.execute(
+            select(CohorteModel.id)
+            .where(CohorteModel.anio == cohorte.anio)
+            .order_by(CohorteModel.created_at, CohorteModel.id)
+        )
+        ids = [str(i) for i in result.scalars().all()]
+        return ids.index(cohorte.id) + 1
+    
     @staticmethod
     def _a_dominio(m: CohorteModel) -> Cohorte:
         return Cohorte(

@@ -37,6 +37,18 @@ TRANSICIONES_PERMITIDAS: dict[EstadoLegajo, set[EstadoLegajo]] = {
 
 DIAS_RESERVA_VACANTE = 30  # BR-005
 
+def prefijo_de_legajo(anio_cohorte: int, numero_cohorte: int) -> str:
+    """Parte fija del número de legajo de una cohorte: "26-001-"."""
+    return f"{anio_cohorte % 100:02d}-{numero_cohorte:03d}-"
+
+
+def numero_de_legajo(anio_cohorte: int, numero_cohorte: int, secuencial: int) -> str:
+    """Formato del SRS (RF-CORE-003): AÑO-COHORTE-SECUENCIAL.
+
+    Ejemplo: "26-001-045" → año 2026, cohorte 1, estudiante 45.
+    """
+    return f"{prefijo_de_legajo(anio_cohorte, numero_cohorte)}{secuencial:03d}"
+
 
 @dataclass
 class Aspirante:
