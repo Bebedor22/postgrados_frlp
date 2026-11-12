@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     smtp_host: str = "localhost"
     smtp_port: int = 1025
     email_from: str = "noreply@posgrado.frlp.utn.edu.ar"
+    # A dónde llegan los avisos para la coordinación (por ejemplo, reservas vencidas)
+    email_coordinacion: str = "coordinacion@posgrado.frlp.utn.edu.ar"
+
+    # Tareas automáticas (vencimiento diario de reservas, BR-005). Los tests las apagan.
+    tareas_programadas: bool = True
 
     # URL del frontend, para armar los links que se envían por email
     frontend_url: str = "http://localhost:8081"

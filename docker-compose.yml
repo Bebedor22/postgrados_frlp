@@ -40,7 +40,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://${DB_USER:-postgrado_user}:${DB_PASSWORD:-postgrado_dev_password}@db:5432/${DB_NAME:-postgrado_dev}
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-production}
       STORAGE_PATH: /var/postgrado-storage
-      EMAIL_MODO: ${EMAIL_MODO:-simulado}
+      # smtp = los emails llegan a MailHog (http://localhost:8025); nunca salen a internet
+      EMAIL_MODO: ${EMAIL_MODO:-smtp}
       SMTP_HOST: mailhog
       SMTP_PORT: 1025
       # Necesario en Windows/Mac para que --reload detecte cambios en el volumen

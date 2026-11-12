@@ -15,7 +15,9 @@ from src.inscripcion.application.inscripcion_por_pasos import (
     iniciar_inscripcion,
 )
 from src.inscripcion.domain.formulario import DatosInvalidos
+from src.inscripcion.infrastructure.email_notifier import NotificadorEmail
 from src.inscripcion.infrastructure.pg_repository import PostgresLegajoRepository
+from src.inscripcion.presentation.dependencias import get_notificador
 from src.inscripcion.presentation.presentadores import tramite_a_respuesta
 from src.inscripcion.presentation.schemas_inscripcion import (
     DatosFormulario,
@@ -53,16 +55,22 @@ def _error_http(error: Exception) -> HTTPException:
     summary="Iniciar inscripción",
     description=(
         "Crea el legajo en BORRADOR y devuelve un **token** y un link personal para retomar la "
-        "inscripción y consultar su estado. Valida cohorte abierta (BR-009) y máximo 2 carreras (BR-001)."
+        "inscripción y consultar su estado (también se le manda por email). "
+        "Valida cohorte abierta (BR-009) y máximo 2 carreras (BR-001)."
     ),
 )
-async def api_iniciar_inscripcion(datos: InicioInscripcion, db: AsyncSession = Depends(get_db, scope="function")):
+async def api_iniciar_inscripcion(
+        datos: InicioInscripcion,
+        db: AsyncSession = Depends(get_db, scope="function"),
+        notificador: NotificadorEmail = Depends(get_notificador),
+):
     try:
         legajo, token = await iniciar_inscripcion(
             **datos.model_dump(),
             repo=PostgresLegajoRepository(db),
             repo_cohortes=PostgresCohorteRepository(db),
             repo_carreras=PostgresCarreraRepository(db),
+            notificador=notificador,
         )
     except (DatosInvalidos, ReglaDeNegocioViolada, CohorteNoEncontrada) as e:
         raise _error_http(e)
@@ -117,10 +125,16 @@ async def api_guardar_progreso(token: str, datos: DatosFormulario, db: AsyncSess
         "(u OBSERVADO) a PENDIENTE."
     ),
 )
-async def api_confirmar_inscripcion(token: str, db: AsyncSession = Depends(get_db, scope="function")):
+async def api_confirmar_inscripcion(
+        token: str,
+        db: AsyncSession = Depends(get_db, scope="function"),
+        notificador: NotificadorEmail = Depends(get_notificador),
+):
     try:
         return _a_respuesta(
-            await confirmar_inscripcion(token, PostgresLegajoRepository(db), PostgresDocumentoRepository(db))
+            await confirmar_inscripcion(
+                token, PostgresLegajoRepository(db), PostgresDocumentoRepository(db), notificador
+            )
         )
     except (TramiteNoEncontrado, ReglaDeNegocioViolada) as e:
         raise _error_http(e)

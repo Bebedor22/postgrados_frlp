@@ -25,6 +25,7 @@ from src.gestion_documental.domain.entities import (
 from src.gestion_documental.domain.repo import DocumentoRepository
 from src.inscripcion.domain.entities import CambioDeEstado, EstadoLegajo, Legajo, TipoCarrera
 from src.inscripcion.domain.formulario import DatosInvalidos, FormularioInscripcion
+from src.inscripcion.domain.notificaciones import Notificador, SinNotificaciones
 from src.inscripcion.domain.repo import LegajoRepository
 from src.inscripcion.domain.value_objects import Email, crear_documento
 from src.oferta_academica.application.gestionar_cohortes import verificar_cohorte_abierta
@@ -79,6 +80,7 @@ async def iniciar_inscripcion(
         repo: LegajoRepository,
         repo_cohortes: CohorteRepository,
         repo_carreras: CarreraRepository,
+        notificador: Notificador = SinNotificaciones(),
 ) -> tuple[Legajo, str]:
     """Paso 0: el aspirante elige carrera y cohorte y deja sus datos mínimos."""
     try:
@@ -126,6 +128,7 @@ async def iniciar_inscripcion(
     )
     token, token_hash = generar_token()
     await repo.crear_inscripcion(legajo, formulario, token_hash)
+    notificador.inscripcion_iniciada(legajo, token)  # Le llega su link personal por email
     return legajo, token
 
 
@@ -183,7 +186,10 @@ async def consultar_tramite(token: str, repo: LegajoRepository, repo_documentos:
 
 
 async def confirmar_inscripcion(
-        token: str, repo: LegajoRepository, repo_documentos: DocumentoRepository
+        token: str,
+        repo: LegajoRepository,
+        repo_documentos: DocumentoRepository,
+        notificador: Notificador = SinNotificaciones(),
 ) -> Tramite:
     """Envía el formulario a revisión: BORRADOR (u OBSERVADO) → PENDIENTE."""
     legajo = await legajo_por_token(token, repo)
@@ -207,4 +213,5 @@ async def confirmar_inscripcion(
         legajo.id, EstadoLegajo.PENDIENTE, comentario=comentario, usuario_email=str(legajo.email)
     )
     await repo.registrar_confirmacion(legajo.id, datetime.now())
+    notificador.inscripcion_enviada(legajo)
     return await consultar_tramite(token, repo, repo_documentos)

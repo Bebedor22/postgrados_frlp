@@ -1,3 +1,6 @@
+import asyncio
+import logging
+from contextlib import asynccontextmanager
 from typing import Dict
 
 from fastapi import FastAPI, Request
@@ -17,6 +20,25 @@ from src.seguimiento_graduacion.presentation.router import router as router_segu
 from src.analytics.presentation.router import router as router_analytics
 from src.gestion_documental.presentation.router import router as router_documental
 from src.gestion_documental.presentation.router import router_aspirante as router_documentos_aspirante
+from src.inscripcion.infrastructure.tareas_programadas import ciclo_diario_de_vencimientos
+
+# Muestra en la consola los logs del sistema (emails, tareas programadas)
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s - %(message)s")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Lo que corre al arrancar y al apagar el backend."""
+    # Las tablas las crean las migraciones de Alembic (alembic upgrade head),
+    # que docker-compose ejecuta antes de levantar la API.
+    print("🚀 Sistema de Posgrado Backend iniciado")
+    tarea = None
+    if get_settings().tareas_programadas:
+        tarea = asyncio.create_task(ciclo_diario_de_vencimientos())
+    yield
+    if tarea:
+        tarea.cancel()
+
 
 app = FastAPI(
     title="Sistema de Posgrado - Backend",
@@ -24,6 +46,7 @@ app = FastAPI(
     version="0.1.0",
     docs_url="/api/docs",  # Swagger UI
     redoc_url="/api/redoc",
+    lifespan=lifespan,
 )
 
 # Configurar CORS: solo los orígenes definidos en CORS_ORIGINS (por defecto, Expo web)
@@ -91,14 +114,6 @@ app.include_router(
 async def manejar_legajo_no_encontrado(request: Request, exc: LegajoNoEncontrado):
     """Convierte la excepción de dominio en un 404 en lugar de un error 500."""
     return JSONResponse(status_code=404, content={"error": exc.message})
-
-@app.on_event("startup")
-async def startup_event():
-    """Eventos que se ejecutan al iniciar la aplicación."""
-    # Las tablas las crean las migraciones de Alembic (alembic upgrade head),
-    # que docker-compose ejecuta antes de levantar la API.
-    print("🚀 Sistema de Posgrado Backend iniciado")
-
 
 @app.get("/", tags=["Root"])
 async def read_root():

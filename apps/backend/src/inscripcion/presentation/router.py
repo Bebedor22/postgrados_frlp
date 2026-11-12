@@ -7,6 +7,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.gestion_documental.infrastructure.pg_repository import PostgresDocumentoRepository
 from src.inscripcion.application.gestionar_legajos import (
     ComentarioObligatorio,
@@ -22,7 +23,9 @@ from src.inscripcion.application.gestionar_legajos import (
 )
 from src.inscripcion.domain.entities import EstadoLegajo, Legajo, TransicionInvalida
 from src.inscripcion.domain.repo import FiltrosLegajos
+from src.inscripcion.infrastructure.email_notifier import NotificadorEmail
 from src.inscripcion.infrastructure.pg_repository import PostgresLegajoRepository
+from src.inscripcion.presentation.dependencias import get_notificador
 from src.inscripcion.presentation.presentadores import tramite_a_respuesta
 from src.inscripcion.presentation.schemas_legajos import (
     CambioEstadoResponse,
@@ -121,10 +124,17 @@ async def api_resumen(
     "/vencer-reservas",
     response_model=ReservasVencidasResponse,
     summary="Vencer reservas de vacante (BR-005)",
-    description="Pasa a VENCIDO los legajos que llevan más de 30 días en COMPLETADO sin matricularse.",
+    description=(
+        "Pasa a VENCIDO los legajos que llevan más de 30 días en COMPLETADO sin matricularse y avisa por email. "
+        "El backend ya lo hace solo todos los días a las 3:00: este endpoint sirve para forzarlo."
+    ),
 )
-async def api_vencer_reservas(db: AsyncSession = Depends(get_db, scope="function"), usuario: dict = Depends(puede_gestionar)):
-    vencidos = await vencer_reservas(PostgresLegajoRepository(db), usuario["email"])
+async def api_vencer_reservas(
+        db: AsyncSession = Depends(get_db, scope="function"),
+        usuario: dict = Depends(puede_gestionar),
+        notificador: NotificadorEmail = Depends(get_notificador),
+):
+    vencidos = await vencer_reservas(PostgresLegajoRepository(db), usuario["email"], notificador=notificador)
     return ReservasVencidasResponse(cantidad=len(vencidos), legajos=[_respuesta_cambio(l) for l in vencidos])
 
 
@@ -141,9 +151,18 @@ async def api_detalle_legajo(legajo_id: str, db: AsyncSession = Depends(get_db, 
 
 
 # ── Workflow (solo COORDINADOR) ──────────────────────────────────────────────
+# Cada cambio de estado le avisa al aspirante por email (ver dependencias.py).
 
-@router.post("/{legajo_id}/revisar", response_model=CambioEstadoResponse, summary="Tomar para revisión (PENDIENTE → EN_REVISION)")
-async def api_revisar(legajo_id: str, db: AsyncSession = Depends(get_db, scope="function"), usuario: dict = Depends(puede_gestionar)):
+@router.post(
+    "/{legajo_id}/revisar",
+    response_model=CambioEstadoResponse,
+    summary="Tomar para revisión (PENDIENTE → EN_REVISION)",
+)
+async def api_revisar(
+        legajo_id: str,
+        db: AsyncSession = Depends(get_db, scope="function"),
+        usuario: dict = Depends(puede_gestionar),
+):
     return _respuesta_cambio(await _ejecutar(revisar_legajo(legajo_id, PostgresLegajoRepository(db), usuario["email"])))
 
 
@@ -151,12 +170,16 @@ async def api_revisar(legajo_id: str, db: AsyncSession = Depends(get_db, scope="
     "/{legajo_id}/observar",
     response_model=CambioEstadoResponse,
     summary="Observar (→ OBSERVADO)",
-    description="El aspirante ve el comentario en su trámite, corrige y vuelve a enviar.",
+    description="El aspirante recibe el comentario por email y lo ve en su trámite; corrige y vuelve a enviar.",
 )
 async def api_observar(
-        legajo_id: str, datos: ComentarioRequest, db: AsyncSession = Depends(get_db, scope="function"), usuario: dict = Depends(puede_gestionar)
+        legajo_id: str,
+        datos: ComentarioRequest,
+        db: AsyncSession = Depends(get_db, scope="function"),
+        usuario: dict = Depends(puede_gestionar),
+        notificador: NotificadorEmail = Depends(get_notificador),
 ):
-    caso = observar_legajo(legajo_id, datos.comentario, PostgresLegajoRepository(db), usuario["email"])
+    caso = observar_legajo(legajo_id, datos.comentario, PostgresLegajoRepository(db), usuario["email"], notificador)
     return _respuesta_cambio(await _ejecutar(caso))
 
 
@@ -164,21 +187,46 @@ async def api_observar(
     "/{legajo_id}/aprobar",
     response_model=CambioEstadoResponse,
     summary="Aprobar (EN_REVISION → COMPLETADO)",
-    description="Asigna el número de legajo definitivo (AA-NNNN) y empieza a correr la reserva de vacante de 30 días.",
+    description="Asigna el número de legajo definitivo y empieza a correr la reserva de vacante de 30 días.",
 )
-async def api_aprobar(legajo_id: str, db: AsyncSession = Depends(get_db, scope="function"), usuario: dict = Depends(puede_gestionar)):
-    caso = aprobar_legajo(legajo_id, PostgresLegajoRepository(db), PostgresCohorteRepository(db), usuario["email"])
-    return _respuesta_cambio(await _ejecutar(caso))
-
-
-@router.post("/{legajo_id}/rechazar", response_model=CambioEstadoResponse, summary="Rechazar (EN_REVISION → RECHAZADO)")
-async def api_rechazar(
-        legajo_id: str, datos: MotivoRequest, db: AsyncSession = Depends(get_db, scope="function"), usuario: dict = Depends(puede_gestionar)
+async def api_aprobar(
+        legajo_id: str,
+        db: AsyncSession = Depends(get_db, scope="function"),
+        usuario: dict = Depends(puede_gestionar),
+        notificador: NotificadorEmail = Depends(get_notificador),
 ):
-    caso = rechazar_legajo(legajo_id, datos.motivo, PostgresLegajoRepository(db), usuario["email"])
+    caso = aprobar_legajo(
+        legajo_id, PostgresLegajoRepository(db), PostgresCohorteRepository(db), usuario["email"], notificador
+    )
     return _respuesta_cambio(await _ejecutar(caso))
 
 
-@router.post("/{legajo_id}/matricular", response_model=CambioEstadoResponse, summary="Matricular (COMPLETADO → ACTIVO)")
-async def api_matricular(legajo_id: str, db: AsyncSession = Depends(get_db, scope="function"), usuario: dict = Depends(puede_gestionar)):
-    return _respuesta_cambio(await _ejecutar(matricular_legajo(legajo_id, PostgresLegajoRepository(db), usuario["email"])))
+@router.post(
+    "/{legajo_id}/rechazar",
+    response_model=CambioEstadoResponse,
+    summary="Rechazar (EN_REVISION → RECHAZADO)",
+)
+async def api_rechazar(
+        legajo_id: str,
+        datos: MotivoRequest,
+        db: AsyncSession = Depends(get_db, scope="function"),
+        usuario: dict = Depends(puede_gestionar),
+        notificador: NotificadorEmail = Depends(get_notificador),
+):
+    caso = rechazar_legajo(legajo_id, datos.motivo, PostgresLegajoRepository(db), usuario["email"], notificador)
+    return _respuesta_cambio(await _ejecutar(caso))
+
+
+@router.post(
+    "/{legajo_id}/matricular",
+    response_model=CambioEstadoResponse,
+    summary="Matricular (COMPLETADO → ACTIVO)",
+)
+async def api_matricular(
+        legajo_id: str,
+        db: AsyncSession = Depends(get_db, scope="function"),
+        usuario: dict = Depends(puede_gestionar),
+        notificador: NotificadorEmail = Depends(get_notificador),
+):
+    caso = matricular_legajo(legajo_id, PostgresLegajoRepository(db), usuario["email"], notificador)
+    return _respuesta_cambio(await _ejecutar(caso))

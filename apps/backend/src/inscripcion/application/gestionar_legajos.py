@@ -4,7 +4,8 @@
 - Workflow: revisar, observar, aprobar, rechazar y matricular (ARQUITECTURA.md §6).
 - BR-005: vencer las reservas de vacante que pasaron 30 días en COMPLETADO.
 
-Cada cambio de estado queda en la auditoría con el email de quien lo hizo.
+Cada cambio de estado queda en la auditoría con el email de quien lo hizo, y se
+avisa al aspirante por medio del Notificador (por defecto, no se avisa nada).
 """
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -14,6 +15,7 @@ from src.gestion_documental.domain.entities import RequisitoDocumental
 from src.gestion_documental.domain.repo import DocumentoRepository
 from src.inscripcion.application.inscripcion_por_pasos import requisitos_de_documentos
 from src.inscripcion.domain.entities import DIAS_RESERVA_VACANTE, EstadoLegajo, Legajo
+from src.inscripcion.domain.notificaciones import Notificador, SinNotificaciones
 from src.inscripcion.domain.repo import FiltrosLegajos, LegajoRepository
 from src.oferta_academica.domain.repo import CohorteRepository
 
@@ -70,7 +72,7 @@ async def _cambiar_estado(
         legajo_id: str,
         nuevo_estado: EstadoLegajo,
         repo: LegajoRepository,
-        usuario_email: str,
+        usuario_email: Optional[str],
         comentario: Optional[str],
 ) -> Legajo:
     legajo = await repo.obtener_por_id(legajo_id)
@@ -92,16 +94,32 @@ async def revisar_legajo(legajo_id: str, repo: LegajoRepository, usuario_email: 
     )
 
 
-async def observar_legajo(legajo_id: str, comentario: str, repo: LegajoRepository, usuario_email: str) -> Legajo:
+async def observar_legajo(
+        legajo_id: str,
+        comentario: str,
+        repo: LegajoRepository,
+        usuario_email: str,
+        notificador: Notificador = SinNotificaciones(),
+) -> Legajo:
     """PENDIENTE / EN_REVISION → OBSERVADO. El aspirante ve el comentario en su trámite y corrige."""
     comentario = _validar_comentario(comentario, "La observación")
-    return await _cambiar_estado(legajo_id, EstadoLegajo.OBSERVADO, repo, usuario_email, comentario)
+    legajo = await _cambiar_estado(legajo_id, EstadoLegajo.OBSERVADO, repo, usuario_email, comentario)
+    notificador.legajo_observado(legajo, comentario)
+    return legajo
 
 
-async def rechazar_legajo(legajo_id: str, motivo: str, repo: LegajoRepository, usuario_email: str) -> Legajo:
+async def rechazar_legajo(
+        legajo_id: str,
+        motivo: str,
+        repo: LegajoRepository,
+        usuario_email: str,
+        notificador: Notificador = SinNotificaciones(),
+) -> Legajo:
     """EN_REVISION → RECHAZADO (estado terminal)."""
     motivo = _validar_comentario(motivo, "El motivo del rechazo")
-    return await _cambiar_estado(legajo_id, EstadoLegajo.RECHAZADO, repo, usuario_email, motivo)
+    legajo = await _cambiar_estado(legajo_id, EstadoLegajo.RECHAZADO, repo, usuario_email, motivo)
+    notificador.legajo_rechazado(legajo, motivo)
+    return legajo
 
 
 async def aprobar_legajo(
@@ -109,6 +127,7 @@ async def aprobar_legajo(
         repo: LegajoRepository,
         repo_cohortes: CohorteRepository,
         usuario_email: str,
+        notificador: Notificador = SinNotificaciones(),
 ) -> Legajo:
     """EN_REVISION → COMPLETADO y asigna el número de legajo definitivo (AA-NNNN).
 
@@ -124,25 +143,42 @@ async def aprobar_legajo(
     await repo.asignar_numero(legajo_id, numero)
 
     vence = Legajo.vencimiento_de_reserva(date.today())
-    return await repo.actualizar_estado(
+    legajo = await repo.actualizar_estado(
         legajo_id,
         EstadoLegajo.COMPLETADO,
         f"Aprobado. Legajo N° {numero}. Reserva de vacante hasta el {vence:%d/%m/%Y}",
         usuario_email,
     )
+    notificador.legajo_aprobado(legajo, vence)
+    return legajo
 
 
-async def matricular_legajo(legajo_id: str, repo: LegajoRepository, usuario_email: str) -> Legajo:
+async def matricular_legajo(
+        legajo_id: str,
+        repo: LegajoRepository,
+        usuario_email: str,
+        notificador: Notificador = SinNotificaciones(),
+) -> Legajo:
     """COMPLETADO → ACTIVO: el aspirante confirmó su vacante y pasa a ser estudiante."""
     legajo = await _cambiar_estado(
         legajo_id, EstadoLegajo.ACTIVO, repo, usuario_email, "Matriculado: pasa a estudiante activo"
     )
     await repo.registrar_activacion(legajo_id, datetime.now())
+    notificador.legajo_matriculado(legajo)
     return legajo
 
 
-async def vencer_reservas(repo: LegajoRepository, usuario_email: str, hoy: Optional[date] = None) -> list[Legajo]:
-    """BR-005: pasa a VENCIDO todo legajo que lleva más de 30 días en COMPLETADO."""
+async def vencer_reservas(
+        repo: LegajoRepository,
+        usuario_email: Optional[str],
+        hoy: Optional[date] = None,
+        notificador: Notificador = SinNotificaciones(),
+) -> list[Legajo]:
+    """BR-005: pasa a VENCIDO todo legajo que lleva más de 30 días en COMPLETADO.
+
+    La corre todos los días la tarea programada (usuario_email = None, "automático")
+    y también se puede ejecutar a mano desde la API.
+    """
     hoy = hoy or date.today()
     limite = datetime.combine(hoy - timedelta(days=DIAS_RESERVA_VACANTE), datetime.min.time())
     vencidos = []
@@ -156,4 +192,5 @@ async def vencer_reservas(repo: LegajoRepository, usuario_email: str, hoy: Optio
                 f"Reserva de vacante vencida ({DIAS_RESERVA_VACANTE} días sin matricularse)",
             )
         )
+    notificador.reservas_vencidas(vencidos)
     return vencidos
