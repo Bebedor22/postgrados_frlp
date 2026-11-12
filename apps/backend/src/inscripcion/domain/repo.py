@@ -15,6 +15,7 @@ class FiltrosLegajos:
     carrera_id: Optional[str] = None
     estado: Optional[EstadoLegajo] = None
     texto: Optional[str] = None  # apellido, nombre, documento o email
+    tiene_beca: Optional[bool] = None  # True: solo con beca · False: solo sin beca
     pagina: int = 1
     por_pagina: int = 20
 

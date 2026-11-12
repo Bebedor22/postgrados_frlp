@@ -1,6 +1,7 @@
 /**
  * Bandeja del equipo de conducción: elegir cohorte, abrir o cerrar la inscripción,
- * ver cuántos legajos hay en cada estado y listar o buscar inscriptos.
+ * ver cuántos legajos hay en cada estado, listar o buscar inscriptos con filtros
+ * (estado, carrera y beca) y exportar la búsqueda a Excel (RF-CORE-004).
  */
 import {useRouter} from "expo-router";
 import {useEffect, useState} from "react";
@@ -9,13 +10,17 @@ import {
     Boton, InsigniaEstado, PortalConduccion, Tarjeta, useUsuarioConduccion,
 } from "../../src/components/conduccion/PortalConduccion";
 import {
-    ApiError, Cohorte, LegajoFila, cambiarInscripcionCohorte, listarCohortes, listarLegajos, resumenLegajos,
+    ApiError, Carrera, Cohorte, FiltrosLegajos, LegajoFila, cambiarInscripcionCohorte, exportarLegajos, listarCarreras,
+    listarCohortes, listarLegajos, resumenLegajos,
 } from "../../src/lib/api";
+import {guardarArchivo} from "../../src/lib/documentos";
 import {ESTADOS} from "../../src/lib/formulario";
 
 const POR_PAGINA = 15;
 // Estados que se muestran en el resumen, en el orden del workflow
-const ESTADOS_RESUMEN = ["PENDIENTE", "EN_REVISION", "OBSERVADO", "COMPLETADO", "ACTIVO", "BORRADOR", "RECHAZADO", "VENCIDO"];
+const ESTADOS_RESUMEN = [
+    "PENDIENTE", "EN_REVISION", "OBSERVADO", "COMPLETADO", "ACTIVO", "BORRADOR", "RECHAZADO", "VENCIDO", "BAJA",
+];
 const NOMBRE_CORTO: Record<string, string> = {
     BORRADOR: "En carga",
     PENDIENTE: "Pendientes",
@@ -25,7 +30,13 @@ const NOMBRE_CORTO: Record<string, string> = {
     ACTIVO: "Activos",
     RECHAZADO: "Rechazados",
     VENCIDO: "Vencidos",
+    BAJA: "Bajas",
 };
+const OPCIONES_BECA: {texto: string; valor: boolean | null}[] = [
+    {texto: "Con y sin beca", valor: null},
+    {texto: "Con beca", valor: true},
+    {texto: "Sin beca", valor: false},
+];
 
 function Chip({texto, activo, alPresionar}: {texto: string; activo: boolean; alPresionar: () => void}) {
     return (
@@ -56,6 +67,10 @@ export default function BandejaConduccionScreen() {
     const [cohorteId, setCohorteId] = useState<string | null>(null);
     const [resumen, setResumen] = useState<Record<string, number>>({});
     const [estado, setEstado] = useState<string | null>(null);
+    const [carreras, setCarreras] = useState<Carrera[]>([]);
+    const [carreraId, setCarreraId] = useState<string | null>(null);
+    const [tieneBeca, setTieneBeca] = useState<boolean | null>(null);
+    const [exportando, setExportando] = useState(false);
     const [buscar, setBuscar] = useState("");
     const [busquedaAplicada, setBusquedaAplicada] = useState("");
     const [pagina, setPagina] = useState(1);
@@ -81,6 +96,7 @@ export default function BandejaConduccionScreen() {
                 setCohorteId((lista.find((c) => c.inscripcion_abierta) ?? lista[0])?.id ?? null);
             })
             .catch(manejarError);
+        listarCarreras().then(setCarreras).catch(manejarError);
     }, [usuario]);
 
     // La búsqueda se aplica cuando se deja de escribir (0,4 s)
@@ -97,22 +113,38 @@ export default function BandejaConduccionScreen() {
         resumenLegajos(cohorteId).then(setResumen).catch(manejarError);
     }, [usuario, cohorteId]);
 
+    // Los mismos filtros sirven para la lista y para el Excel
+    const filtros: FiltrosLegajos = {
+        cohorte_id: cohorteId ?? undefined,
+        carrera_id: carreraId ?? undefined,
+        tiene_beca: tieneBeca ?? undefined,
+        estado: estado ?? undefined,
+        buscar: busquedaAplicada || undefined,
+    };
+
     useEffect(() => {
         if (!usuario || !cohorteId) return;
         setLegajos(null);
-        listarLegajos({
-            cohorte_id: cohorteId,
-            estado: estado ?? undefined,
-            buscar: busquedaAplicada || undefined,
-            pagina,
-            por_pagina: POR_PAGINA,
-        })
+        listarLegajos({...filtros, pagina, por_pagina: POR_PAGINA})
             .then((r) => {
                 setLegajos(r.legajos);
                 setTotal(r.total);
             })
             .catch(manejarError);
-    }, [usuario, cohorteId, estado, busquedaAplicada, pagina]);
+    }, [usuario, cohorteId, carreraId, tieneBeca, estado, busquedaAplicada, pagina]);
+
+    async function exportar() {
+        setExportando(true);
+        setError(null);
+        try {
+            const excel = await exportarLegajos(filtros);
+            guardarArchivo(excel, `legajos_${cohorte?.nombre.replace(/\s+/g, "_") ?? "posgrado"}.xlsx`);
+        } catch (e) {
+            manejarError(e);
+        } finally {
+            setExportando(false);
+        }
+    }
 
     async function alternarInscripcion() {
         if (!cohorte) return;
@@ -129,6 +161,14 @@ export default function BandejaConduccionScreen() {
 
     const elegirEstado = (nuevo: string | null) => {
         setEstado(nuevo);
+        setPagina(1);
+    };
+    const elegirCarrera = (nueva: string | null) => {
+        setCarreraId(nueva);
+        setPagina(1);
+    };
+    const elegirBeca = (nueva: boolean | null) => {
+        setTieneBeca(nueva);
         setPagina(1);
     };
     const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA));
@@ -174,7 +214,9 @@ export default function BandejaConduccionScreen() {
                             }}/>
                             <Text style={{fontSize: 14, color: "#111827"}}>
                                 Inscripción {cohorte.inscripcion_abierta ? "abierta" : "cerrada"}
-                                <Text style={{color: "#6b7280"}}> · {totalCohorte} legajos en {cohorte.nombre}</Text>
+                                <Text style={{color: "#6b7280"}}>
+                                    {" "}· {totalCohorte} {totalCohorte === 1 ? "legajo" : "legajos"} en {cohorte.nombre}
+                                </Text>
                             </Text>
                         </View>
                         {esCoordinador ? (
@@ -201,7 +243,7 @@ export default function BandejaConduccionScreen() {
                             key={e}
                             onPress={() => elegirEstado(activo ? null : e)}
                             style={{
-                                flexGrow: 1, flexBasis: compacto ? "45%" : 110,
+                                flexGrow: 1, flexBasis: compacto ? "30%" : 90,
                                 backgroundColor: "#ffffff", borderRadius: 8, padding: 12,
                                 borderWidth: activo ? 2 : 1, borderColor: activo ? color : "#e5e7eb",
                             }}
@@ -226,12 +268,34 @@ export default function BandejaConduccionScreen() {
                             paddingHorizontal: 12, paddingVertical: 9, fontSize: 14, backgroundColor: "#ffffff",
                         }}
                     />
+                    <Boton
+                        texto={exportando ? "Generando..." : "Exportar Excel"}
+                        tipo="secundario"
+                        alPresionar={exportar}
+                        deshabilitado={exportando || total === 0}
+                    />
                 </View>
-                <View style={{flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16}}>
-                    <Chip texto="Todos" activo={estado === null} alPresionar={() => elegirEstado(null)}/>
-                    {ESTADOS_RESUMEN.map((e) => (
-                        <Chip key={e} texto={NOMBRE_CORTO[e]} activo={estado === e} alPresionar={() => elegirEstado(e)}/>
-                    ))}
+                <View style={{gap: 10, marginBottom: 16}}>
+                    <View style={{flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center"}}>
+                        <Text style={celda.filtro}>Estado</Text>
+                        <Chip texto="Todos" activo={estado === null} alPresionar={() => elegirEstado(null)}/>
+                        {ESTADOS_RESUMEN.map((e) => (
+                            <Chip key={e} texto={NOMBRE_CORTO[e]} activo={estado === e} alPresionar={() => elegirEstado(e)}/>
+                        ))}
+                    </View>
+                    <View style={{flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center"}}>
+                        <Text style={celda.filtro}>Carrera</Text>
+                        <Chip texto="Todas" activo={carreraId === null} alPresionar={() => elegirCarrera(null)}/>
+                        {carreras.map((c) => (
+                            <Chip key={c.id} texto={c.nombre} activo={carreraId === c.id} alPresionar={() => elegirCarrera(c.id)}/>
+                        ))}
+                    </View>
+                    <View style={{flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center"}}>
+                        <Text style={celda.filtro}>Beca</Text>
+                        {OPCIONES_BECA.map((o) => (
+                            <Chip key={o.texto} texto={o.texto} activo={tieneBeca === o.valor} alPresionar={() => elegirBeca(o.valor)}/>
+                        ))}
+                    </View>
                 </View>
 
                 {!compacto ? (
@@ -305,4 +369,5 @@ export default function BandejaConduccionScreen() {
 const celda = {
     encabezado: {fontSize: 11, fontWeight: "700" as const, color: "#6b7280", textTransform: "uppercase" as const, letterSpacing: 0.5},
     texto: {fontSize: 13, color: "#374151"},
+    filtro: {fontSize: 12, fontWeight: "600" as const, color: "#6b7280", width: 56},
 };

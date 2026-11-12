@@ -203,6 +203,8 @@ class PostgresLegajoRepository(LegajoRepository):
             condiciones.append(LegajoModel.carrera_id == _a_uuid(filtros.carrera_id))
         if filtros.estado:
             condiciones.append(LegajoModel.estado == filtros.estado.value)
+        if filtros.tiene_beca is not None:
+            condiciones.append(LegajoModel.solicita_beca.is_(filtros.tiene_beca))
         if filtros.texto:
             patron = f"%{filtros.texto.strip()}%"
             condiciones.append(

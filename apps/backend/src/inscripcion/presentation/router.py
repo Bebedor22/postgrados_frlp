@@ -3,9 +3,10 @@
 Lectura: COORDINADOR y DIRECCION (el enunciado da acceso a la conducción y a las
 autoridades). Cambios de estado: solo COORDINADOR.
 """
+from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.gestion_documental.infrastructure.pg_repository import PostgresDocumentoRepository
@@ -14,6 +15,7 @@ from src.inscripcion.application.gestionar_legajos import (
     aprobar_legajo,
     buscar_legajos,
     dar_de_baja,
+    legajos_para_exportar,
     matricular_legajo,
     obtener_detalle,
     observar_legajo,
@@ -25,6 +27,7 @@ from src.inscripcion.application.gestionar_legajos import (
 from src.inscripcion.domain.entities import EstadoLegajo, Legajo, TransicionInvalida
 from src.inscripcion.domain.repo import FiltrosLegajos
 from src.inscripcion.infrastructure.email_notifier import NotificadorEmail
+from src.inscripcion.infrastructure.exportador_excel import legajos_a_excel
 from src.inscripcion.infrastructure.pg_repository import PostgresLegajoRepository
 from src.inscripcion.presentation.dependencias import get_notificador
 from src.inscripcion.presentation.presentadores import tramite_a_respuesta
@@ -63,29 +66,47 @@ async def _ejecutar(caso_de_uso):
 
 # ── Bandeja ──────────────────────────────────────────────────────────────────
 
+def filtros_de_busqueda(
+        cohorte_id: Optional[str] = None,
+        carrera_id: Optional[str] = None,
+        estado: Optional[EstadoLegajo] = None,
+        tiene_beca: Optional[bool] = Query(None, description="true: solo con beca · false: solo sin beca"),
+        buscar: Optional[str] = Query(None, min_length=2),
+        pagina: int = Query(1, ge=1),
+        por_pagina: int = Query(20, ge=1, le=100),
+) -> FiltrosLegajos:
+    """Los mismos filtros sirven para el listado y para la exportación a Excel."""
+    return FiltrosLegajos(
+        cohorte_id=cohorte_id,
+        carrera_id=carrera_id,
+        estado=estado,
+        texto=buscar,
+        tiene_beca=tiene_beca,
+        pagina=pagina,
+        por_pagina=por_pagina,
+    )
+
+
 @router.get(
     "/",
     response_model=ListadoLegajosResponse,
     summary="Listar inscriptos con filtros y búsqueda",
-    description="Filtra por cohorte, carrera y estado. `buscar` busca en apellido, nombre, documento, email y N° de legajo.",
+    description=(
+        "Filtra por cohorte, carrera, estado y beca (RF-CORE-004). `buscar` busca en apellido, nombre, "
+        "documento, email y N° de legajo."
+    ),
 )
 async def api_listar_legajos(
-        cohorte_id: Optional[str] = None,
-        carrera_id: Optional[str] = None,
-        estado: Optional[EstadoLegajo] = None,
-        buscar: Optional[str] = Query(None, min_length=2),
-        pagina: int = Query(1, ge=1),
-        por_pagina: int = Query(20, ge=1, le=100),
+        filtros: FiltrosLegajos = Depends(filtros_de_busqueda),
         db: AsyncSession = Depends(get_db, scope="function"),
         _usuario: dict = Depends(puede_leer),
 ):
-    filtros = FiltrosLegajos(cohorte_id, carrera_id, estado, buscar, pagina, por_pagina)
     legajos, total = await buscar_legajos(filtros, PostgresLegajoRepository(db))
     carreras = {c.id: c.nombre for c in await PostgresCarreraRepository(db).listar(solo_activas=False)}
     return ListadoLegajosResponse(
         total=total,
-        pagina=pagina,
-        por_pagina=por_pagina,
+        pagina=filtros.pagina,
+        por_pagina=filtros.por_pagina,
         legajos=[
             LegajoFila(
                 id=l.id,
@@ -104,6 +125,30 @@ async def api_listar_legajos(
             )
             for l in legajos
         ],
+    )
+
+
+@router.get(
+    "/exportar",
+    summary="Exportar la búsqueda a Excel",
+    description=(
+        "Descarga un .xlsx con los legajos que cumplen los filtros (máximo 500), con las columnas del SRS: "
+        "Nº Legajo, Apellido y nombre, DNI, Estado, Carrera y Fecha de inscripción."
+    ),
+    response_class=Response,
+    responses={200: {"content": {"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}}}},
+)
+async def api_exportar_legajos(
+        filtros: FiltrosLegajos = Depends(filtros_de_busqueda),
+        db: AsyncSession = Depends(get_db, scope="function"),
+        _usuario: dict = Depends(puede_leer),
+):
+    legajos = await legajos_para_exportar(filtros, PostgresLegajoRepository(db))
+    carreras = {c.id: c.nombre for c in await PostgresCarreraRepository(db).listar(solo_activas=False)}
+    return Response(
+        content=legajos_a_excel(legajos, carreras),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="legajos_{date.today():%Y-%m-%d}.xlsx"'},
     )
 
 
@@ -234,6 +279,7 @@ async def api_matricular(
 ):
     caso = matricular_legajo(legajo_id, PostgresLegajoRepository(db), usuario["email"], notificador)
     return _respuesta_cambio(await _ejecutar(caso))
+
 
 @router.post(
     "/{legajo_id}/baja",

@@ -196,13 +196,15 @@ export interface LegajoFila {
 
 export interface FiltrosLegajos {
     cohorte_id?: string;
+    carrera_id?: string;
+    tiene_beca?: boolean;
     estado?: string;
     buscar?: string;
     pagina?: number;
     por_pagina?: number;
 }
 
-function aQuery(filtros: Record<string, string | number | undefined>): string {
+function aQuery(filtros: Record<string, string | number | boolean | undefined>): string {
     const partes = Object.entries(filtros)
         .filter(([, v]) => v !== undefined && v !== "")
         .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`);
@@ -213,6 +215,25 @@ export const listarLegajos = (filtros: FiltrosLegajos) =>
     pedir<{total: number; pagina: number; por_pagina: number; legajos: LegajoFila[]}>(
         `/legajos/${aQuery({...filtros})}`, {}, true,
     );
+
+/** Descarga en Excel los legajos que cumplen los filtros (sin paginar, máximo 500). */
+export async function exportarLegajos(filtros: FiltrosLegajos): Promise<Blob> {
+    const {pagina: _p, por_pagina: _pp, ...sinPaginar} = filtros;
+    let respuesta: Response;
+    try {
+        respuesta = await fetch(`${API_URL}/legajos/exportar${aQuery({...sinPaginar})}`, {
+            headers: {Authorization: `Bearer ${obtenerTokenSesion() ?? ""}`},
+        });
+    } catch {
+        throw new ApiError(0, "No se pudo conectar con el servidor.");
+    }
+    if (!respuesta.ok) {
+        if (respuesta.status === 401) cerrarSesion();
+        const cuerpo = await respuesta.json().catch(() => null);
+        throw new ApiError(respuesta.status, mensajeDeError(cuerpo?.detail, respuesta.status));
+    }
+    return respuesta.blob();
+}
 
 export const resumenLegajos = (cohorteId?: string) =>
     pedir<Record<string, number>>(`/legajos/resumen${aQuery({cohorte_id: cohorteId})}`, {}, true);

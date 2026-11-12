@@ -26,6 +26,7 @@ from src.inscripcion.domain.repo import FiltrosLegajos, LegajoRepository
 from src.oferta_academica.domain.repo import CohorteRepository
 
 LARGO_MINIMO_COMENTARIO = 10
+MAXIMO_EXPORTACION = 500  # PRD REQ-CORE-004: "máximo 500 registros"
 
 
 class ComentarioObligatorio(ValueError):
@@ -46,6 +47,11 @@ class DetalleLegajo:
 async def buscar_legajos(filtros: FiltrosLegajos, repo: LegajoRepository) -> tuple[list[Legajo], int]:
     return await repo.buscar(filtros)
 
+async def legajos_para_exportar(filtros: FiltrosLegajos, repo: LegajoRepository) -> list[Legajo]:
+    """Los legajos de la búsqueda actual (sin paginar), hasta 500, para bajarlos a Excel."""
+    filtros.pagina, filtros.por_pagina = 1, MAXIMO_EXPORTACION
+    legajos, _ = await repo.buscar(filtros)
+    return legajos
 
 async def resumen_por_estado(repo: LegajoRepository, cohorte_id: Optional[str] = None) -> dict[str, int]:
     """Cantidad de legajos por estado: alimenta el panel de "inscriptos y estado por cohorte"."""

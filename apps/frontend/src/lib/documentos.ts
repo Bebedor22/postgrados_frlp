@@ -69,3 +69,14 @@ export async function abrirPdfDescargado(descargar: () => Promise<Blob>): Promis
         throw e;
     }
 }
+
+/** Guarda un archivo descargado (por ejemplo, el Excel de la bandeja) en la carpeta de descargas. */
+export function guardarArchivo(archivo: Blob, nombre: string): void {
+    if (!esWeb) return;
+    const url = URL.createObjectURL(archivo);
+    const enlace = document.createElement("a");
+    enlace.href = url;
+    enlace.download = nombre;
+    enlace.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
