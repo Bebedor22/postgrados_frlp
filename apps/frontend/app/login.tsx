@@ -273,10 +273,7 @@ const styles = StyleSheet.create({
         borderColor: "#e5e7eb",
         borderRadius: 8,
         elevation: 5,
-        shadowColor: "#000",
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
+        boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
         zIndex: 1000
     },
     dropdownItem: {paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#f3f4f6"},

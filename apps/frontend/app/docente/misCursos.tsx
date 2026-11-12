@@ -1,8 +1,8 @@
-import {Link, useRouter} from "expo-router";
-import {useState} from "react";
-import {Pressable, StyleSheet, Text, View} from "react-native";
-import {scheduleTestNotification} from "../src/lib/notifications";
-import {Marco} from './components/navLeft.tsx';
+/**
+ * Portal Docente (Módulo B): cursos del docente. Datos de ejemplo, sin backend todavía.
+ */
+import {useRouter} from "expo-router";
+import {MarcoDocente} from "../../src/components/portal/MarcoPortal";
 
 
 const cursosActivos = [
@@ -59,7 +59,7 @@ function EstadoBadge({estado}: { estado: string }) {
 export default function MisCursosScreen() {
     const router = useRouter();
     return (
-        <Marco>
+        <MarcoDocente>
             <div style={{padding: "24px", maxWidth: "900px"}}>
                 <div style={{display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px"}}>
                     <div style={{width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#22c55e"}}/>
@@ -112,7 +112,7 @@ export default function MisCursosScreen() {
                             </div>
                         </div>
                         <button
-                            onClick={() => navigate("/docente/planilla")}
+                            onClick={() => router.push("/docente/planilla")}
                             style={{
                                 display: "flex",
                                 alignItems: "center",
@@ -214,6 +214,6 @@ export default function MisCursosScreen() {
                     ))}
                 </div>
             </div>
-        </Marco>
+        </MarcoDocente>
     );
 }
