@@ -7,9 +7,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Primero solo las dependencias, así Docker reutiliza esta capa si no cambian
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Primero solo las dependencias, así Docker reutiliza esta capa si no cambian.
+# Es la imagen de desarrollo: incluye también pytest, para correr los tests adentro.
+COPY requirements.txt requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements-dev.txt
 
 # Después el código
 COPY . .
