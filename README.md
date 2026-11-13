@@ -108,6 +108,8 @@ docker compose up -d --build
 
 ✅ **Criterio de éxito:** http://localhost:8081 muestra la inscripción, y con `admin@fenix.test` / `Admin1234!` se entra al portal de conducción con 16 aspirantes de demo.
 
+---
+
 ## Estructura del Repositorio
 
 ```

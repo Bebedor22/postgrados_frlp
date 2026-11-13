@@ -47,6 +47,8 @@ Rama `feature/backend-core`. Detalle de decisiones en `docs/adr/ADR-005-decision
 
 ---
 
+## [v0.1.0-alpha] — Sprint 0 (esperado 15/05/2026)
+
 ### Added
 - Autenticación JWT básica (login/logout)
 - Modelo de base de datos inicial con migraciones
