@@ -23,12 +23,19 @@ export function WizardShell({
                                 subtitle,
                                 children,
                                 footer,
+                                showCancel = true,
+                                aviso,
                             }: {
-    currentStep: 1 | 2 | 3 | 4;
+/** 0 = pantalla previa (sin indicador de pasos) */
+    currentStep: 0 | 1 | 2 | 3 | 4;
     title: string;
     subtitle?: string;
     children: ReactNode;
     footer: ReactNode;
+    /** false oculta el botón "Cancelar inscripción" (por ejemplo, en la pantalla del trámite) */
+    showCancel?: boolean;
+    /** Mensaje que se muestra justo arriba de los botones (por ejemplo, un error al avanzar) */
+    aviso?: ReactNode;
 }) {
     const {width} = useWindowDimensions();
     const isCompact = width < 720;
@@ -60,11 +67,11 @@ export function WizardShell({
                 ]}
             >
                 <View style={[styles.card, isCompact && styles.cardCompact]}>
-                    <StepIndicator current={currentStep} compact={isCompact}/>
+                    {currentStep > 0 ? <StepIndicator current={currentStep} compact={isCompact}/> : null}
 
-                    <View style={styles.formContent}>
+                    <View style={[styles.formContent, currentStep === 0 && {paddingTop: 0, borderTopWidth: 0}]}>
                         <Text style={styles.stepTitle}>
-                            Paso {currentStep} de 4: {title}
+                            {currentStep > 0 ? `Paso ${currentStep} de 4: ${title}` : title}
                         </Text>
 
                         {subtitle ? (
@@ -74,19 +81,23 @@ export function WizardShell({
                         {children}
                     </View>
 
+                    {aviso ? <View style={{marginTop: 24}}>{aviso}</View> : null}
+
                     <View
                         style={[
                             styles.actionsRow,
                             isCompact && styles.actionsRowCompact,
                         ]}
                     >
-                        <Link href="/" asChild>
-                            <Pressable style={wizardStyles.cancelButton}>
-                                <Text style={wizardStyles.cancelButtonText}>
-                                    Cancelar inscripción
-                                </Text>
-                            </Pressable>
-                        </Link>
+                        {showCancel ? (
+                            <Link href="/" asChild>
+                                <Pressable style={wizardStyles.cancelButton}>
+                                    <Text style={wizardStyles.cancelButtonText}>
+                                        Cancelar inscripción
+                                    </Text>
+                                </Pressable>
+                            </Link>
+                        ) : <View/>}
 
                         <View
                             style={[

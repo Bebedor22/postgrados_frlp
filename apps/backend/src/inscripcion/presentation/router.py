@@ -1,255 +1,298 @@
-from fastapi import APIRouter, Depends, UploadFile, File, BackgroundTasks
-from fastapi.responses import JSONResponse
-from typing import List, Optional
-from datetime import date
+"""Bandeja del equipo de conducción: listado, búsqueda, detalle y workflow de legajos.
 
-from src.shared.auth.dependencies import get_current_user, require_role_coordinador, require_role_docente, \
-    require_role_cpr, require_role_aspirante
-from src.shared.database.connection import get_db
+Lectura: COORDINADOR y DIRECCION (el enunciado da acceso a la conducción y a las
+autoridades). Cambios de estado: solo COORDINADOR.
+"""
+from datetime import date
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.inscripcion.application.inscribir_aspirante import inscribir_aspirante
-from src.inscripcion.application.aprobar_legajo import aprobar_legajo
-from src.inscripcion.application.observar_legajo import observar_legajo
-from src.inscripcion.application.verificar_reserva_vencida import verificar_reserva_vencida
-from src.inscripcion.domain.entities import EstadoLegajo, TipoCarrera
-from src.shared.exceptions import LegajoNoEncontrado
-
-router = APIRouter(tags=["Legajos - Módulo Core"])
-
-
-@router.post(
-    "/",
-    summary="Registro de aspirante (inscripción pública)",
-    description="Aspirante completa formulario de inscripción. Endpoint público, no requiere autenticación.",
-    tags=["Inscripción Pública"],
+from src.gestion_documental.infrastructure.pg_repository import PostgresDocumentoRepository
+from src.inscripcion.application.gestionar_legajos import (
+    ComentarioObligatorio,
+    aprobar_legajo,
+    buscar_legajos,
+    dar_de_baja,
+    legajos_para_exportar,
+    matricular_legajo,
+    obtener_detalle,
+    observar_legajo,
+    rechazar_legajo,
+    resumen_por_estado,
+    revisar_legajo,
+    vencer_reservas,
 )
-async def registro_aspirante(
-        id: str,
-        dni: str,
-        email: str,
-        nombre: str,
-        apellido: str,
-        tipo_carrera: str,
-        carrera_elegida: str,
-        motivacion: str,
-        solicita_beca: bool,
-        cohorte_id: str,
-        db: AsyncSession = Depends(get_db),
-):
-    """
-    Registro de nuevo aspirante.
+from src.inscripcion.domain.entities import EstadoLegajo, Legajo, TransicionInvalida
+from src.inscripcion.domain.repo import FiltrosLegajos
+from src.inscripcion.infrastructure.email_notifier import NotificadorEmail
+from src.inscripcion.infrastructure.exportador_excel import legajos_a_excel
+from src.inscripcion.infrastructure.pg_repository import PostgresLegajoRepository
+from src.inscripcion.presentation.dependencias import get_notificador
+from src.inscripcion.presentation.presentadores import tramite_a_respuesta
+from src.inscripcion.presentation.schemas_legajos import (
+    CambioEstadoResponse,
+    ComentarioRequest,
+    LegajoDetalleResponse,
+    LegajoFila,
+    ListadoLegajosResponse,
+    MotivoRequest,
+    ReservasVencidasResponse,
+)
+from src.oferta_academica.infrastructure.pg_repository import PostgresCarreraRepository, PostgresCohorteRepository
+from src.shared.auth.dependencies import require_role
+from src.shared.database.connection import get_db
 
-    Endpoint público: cualquier persona puede acceder para inscribirse.
-    Valida DNI, email y crea aspirante + legajo en estado BORRADOR.
-    """
-    aspirante, legajo, error = inscribir_aspirante(
-        id=id,
-        dni=dni,
-        email=email,
-        nombre=nombre,
-        apellido=apellido,
-        tipo_carrera=tipo_carrera,
-        carrera_elegida=carrera_elegida,
-        motivacion=motivacion,
-        solicita_beca=solicita_beca,
+router = APIRouter()
+
+puede_leer = require_role("COORDINADOR", "DIRECCION")
+puede_gestionar = require_role("COORDINADOR")
+
+
+def _respuesta_cambio(legajo: Legajo) -> CambioEstadoResponse:
+    return CambioEstadoResponse(legajo_id=legajo.id, numero_legajo=legajo.numero_legajo, estado=legajo.estado.value)
+
+
+async def _ejecutar(caso_de_uso):
+    """Traduce los errores del dominio a códigos HTTP."""
+    try:
+        return await caso_de_uso
+    except TransicionInvalida as e:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(e))
+    except ComentarioObligatorio as e:
+        raise HTTPException(422, str(e))
+
+
+# ── Bandeja ──────────────────────────────────────────────────────────────────
+
+def filtros_de_busqueda(
+        cohorte_id: Optional[str] = None,
+        carrera_id: Optional[str] = None,
+        estado: Optional[EstadoLegajo] = None,
+        tiene_beca: Optional[bool] = Query(None, description="true: solo con beca · false: solo sin beca"),
+        buscar: Optional[str] = Query(None, min_length=2),
+        pagina: int = Query(1, ge=1),
+        por_pagina: int = Query(20, ge=1, le=100),
+) -> FiltrosLegajos:
+    """Los mismos filtros sirven para el listado y para la exportación a Excel."""
+    return FiltrosLegajos(
         cohorte_id=cohorte_id,
+        carrera_id=carrera_id,
+        estado=estado,
+        texto=buscar,
+        tiene_beca=tiene_beca,
+        pagina=pagina,
+        por_pagina=por_pagina,
     )
 
-    if error:
-        return JSONResponse(status_code=400, content={"error": error})
 
-    from src.inscripcion.infrastructure.orm_models import LegajoModel
-    from src.inscripcion.infrastructure.pg_repository import PostgresLegajoRepository
+@router.get(
+    "/",
+    response_model=ListadoLegajosResponse,
+    summary="Listar inscriptos con filtros y búsqueda",
+    description=(
+        "Filtra por cohorte, carrera, estado y beca (RF-CORE-004). `buscar` busca en apellido, nombre, "
+        "documento, email y N° de legajo."
+    ),
+)
+async def api_listar_legajos(
+        filtros: FiltrosLegajos = Depends(filtros_de_busqueda),
+        db: AsyncSession = Depends(get_db, scope="function"),
+        _usuario: dict = Depends(puede_leer),
+):
+    legajos, total = await buscar_legajos(filtros, PostgresLegajoRepository(db))
+    carreras = {c.id: c.nombre for c in await PostgresCarreraRepository(db).listar(solo_activas=False)}
+    return ListadoLegajosResponse(
+        total=total,
+        pagina=filtros.pagina,
+        por_pagina=filtros.por_pagina,
+        legajos=[
+            LegajoFila(
+                id=l.id,
+                numero_legajo=l.numero_legajo,
+                apellido=l.apellido,
+                nombre=l.nombre,
+                tipo_documento=l.tipo_documento,
+                documento=str(l.dni),
+                email=str(l.email),
+                carrera_id=l.carrera_id,
+                carrera=carreras.get(l.carrera_id),
+                estado=l.estado.value,
+                solicita_beca=l.solicita_beca,
+                tipo_beca=l.tipo_beca,
+                fecha_inscripcion=l.fecha_inscripcion,
+            )
+            for l in legajos
+        ],
+    )
 
-    repo = PostgresLegajoRepository(db)
-    legajo_grabado = await repo.guardar(legajo)
 
-    return {
-        "mensaje": "Inscripción completada exitosamente",
-        "legajo_id": legajo_grabado.id,
-        "numero_legajo": legajo_grabado.numero_legajo,
-        "estado": legajo_grabado.estado.value,
-        "mensaje_siguiente": "Adjuntar documentos requeridos (DNI, Título) para completar el legajo",
-    }
+@router.get(
+    "/exportar",
+    summary="Exportar la búsqueda a Excel",
+    description=(
+        "Descarga un .xlsx con los legajos que cumplen los filtros (máximo 500), con las columnas del SRS: "
+        "Nº Legajo, Apellido y nombre, DNI, Estado, Carrera y Fecha de inscripción."
+    ),
+    response_class=Response,
+    responses={200: {"content": {"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}}}},
+)
+async def api_exportar_legajos(
+        filtros: FiltrosLegajos = Depends(filtros_de_busqueda),
+        db: AsyncSession = Depends(get_db, scope="function"),
+        _usuario: dict = Depends(puede_leer),
+):
+    legajos = await legajos_para_exportar(filtros, PostgresLegajoRepository(db))
+    carreras = {c.id: c.nombre for c in await PostgresCarreraRepository(db).listar(solo_activas=False)}
+    return Response(
+        content=legajos_a_excel(legajos, carreras),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="legajos_{date.today():%Y-%m-%d}.xlsx"'},
+    )
+
+
+@router.get(
+    "/resumen",
+    response_model=dict[str, int],
+    summary="Cantidad de legajos por estado",
+    description="Para el panel de conducción: inscriptos y estado por cohorte.",
+)
+async def api_resumen(
+        cohorte_id: Optional[str] = None,
+        db: AsyncSession = Depends(get_db, scope="function"),
+        _usuario: dict = Depends(puede_leer),
+):
+    return await resumen_por_estado(PostgresLegajoRepository(db), cohorte_id)
 
 
 @router.post(
-    "/{legajo_id}/aprobar",
-    summary="Coordinador aprueba legajo",
-    description="El coordinador aprueba un legajo, genera número único y cambia estado a COMPLETADO.",
-    dependencies=[Depends(require_role_coordinador())],
-    tags=["Gestión Coordinador"],
+    "/vencer-reservas",
+    response_model=ReservasVencidasResponse,
+    summary="Vencer reservas de vacante (BR-005)",
+    description=(
+        "Pasa a VENCIDO los legajos que llevan más de 30 días en COMPLETADO sin matricularse y avisa por email. "
+        "El backend ya lo hace solo todos los días a las 3:00: este endpoint sirve para forzarlo."
+    ),
 )
-async def api_aprobar_legajo(
-        legajo_id: str,
-        db: AsyncSession = Depends(get_db),
+async def api_vencer_reservas(
+        db: AsyncSession = Depends(get_db, scope="function"),
+        usuario: dict = Depends(puede_gestionar),
+        notificador: NotificadorEmail = Depends(get_notificador),
 ):
-    """Endpoint para que el coordinador apruebe un legajo."""
-    from src.inscripcion.infrastructure.orm_models import LegajoModel
-    from src.inscripcion.infrastructure.pg_repository import PostgresLegajoRepository
-
-    repo = PostgresLegajoRepository(db)
-    legajo_obj = await repo.obtener_por_id(legajo_id)
-
-    legajo_actualizado, error = aprobar_legajo(legajo_obj, es_coordinador=True)
-
-    if error:
-        return JSONResponse(status_code=400, content={"error": error})
-
-    legajo_guardado = await repo.actualizar_estado(
-        legajo_id=legajo_id,
-        nuevo_estado=EstadoLegajo.COMPLETADO,
-        comentario="Aprobado por coordinador",
-    )
-
-    return {
-        "mensaje": "Legajo aprobado exitosamente",
-        "numero_legajo": legajo_guardado.numero_legajo,
-        "estado": legajo_guardado.estado.value,
-        "fecha_activacion": legajo_guardado.fecha_activacion,
-        "mensaje_reserva": "La reserva de vacante vence a los 30 días corridos (BR-005)",
-    }
-
-
-@router.post(
-    "/{legajo_id}/observar",
-    summary="Coordinador observa legajo",
-    description="El coordinador marca un legajo como observado por documentación faltante.",
-    dependencies=[Depends(require_role_coordinador())],
-    tags=["Gestión Coordinador"],
-)
-async def api_observar_legajo(
-        legajo_id: str,
-        comentario: str,
-        db: AsyncSession = Depends(get_db),
-):
-    """Endpoint para que el coordinador observe un legajo."""
-    from src.inscripcion.infrastructure.orm_models import LegajoModel
-    from src.inscripcion.infrastructure.pg_repository import PostgresLegajoRepository
-
-    repo = PostgresLegajoRepository(db)
-    legajo_obj = await repo.obtener_por_id(legajo_id)
-
-    legajo_actualizado, error = observar_legajo(
-        legajo_obj, comentario=comentario, es_coordinador=True
-    )
-
-    if error:
-        return JSONResponse(status_code=400, content={"error": error})
-
-    await repo.actualizar_estado(
-        legajo_id=legajo_id,
-        nuevo_estado=legajo_actualizado.estado,
-        comentario=comentario,
-    )
-
-    return {
-        "mensaje": "Legajo puesto en estado Observado",
-        "estado_actual": legajo_actualizado.estado.value,
-        "comentario": comentario,
-        "proximo_paso": "Aspirante debe corregir documentación y reenviar",
-    }
+    vencidos = await vencer_reservas(PostgresLegajoRepository(db), usuario["email"], notificador=notificador)
+    return ReservasVencidasResponse(cantidad=len(vencidos), legajos=[_respuesta_cambio(l) for l in vencidos])
 
 
 @router.get(
     "/{legajo_id}",
-    summary="Obtener detalle de legajo",
-    description="Obtener información de un legajo por su ID.",
-    tags=["Consulta"],
+    response_model=LegajoDetalleResponse,
+    summary="Detalle completo de un legajo",
+    description="Todos los datos del formulario, el % completado, el historial de estados y la reserva de vacante.",
 )
-async def api_obtener_legajo(
+async def api_detalle_legajo(legajo_id: str, db: AsyncSession = Depends(get_db, scope="function"), _usuario: dict = Depends(puede_leer)):
+    detalle = await obtener_detalle(legajo_id, PostgresLegajoRepository(db), PostgresDocumentoRepository(db))
+    base = tramite_a_respuesta(detalle.legajo, detalle.formulario, detalle.historial, detalle.documentos)
+    return LegajoDetalleResponse(**base.model_dump(), reserva_vence_el=detalle.reserva_vence_el)
+
+
+# ── Workflow (solo COORDINADOR) ──────────────────────────────────────────────
+# Cada cambio de estado le avisa al aspirante por email (ver dependencias.py).
+
+@router.post(
+    "/{legajo_id}/revisar",
+    response_model=CambioEstadoResponse,
+    summary="Tomar para revisión (PENDIENTE → EN_REVISION)",
+)
+async def api_revisar(
         legajo_id: str,
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_db, scope="function"),
+        usuario: dict = Depends(puede_gestionar),
 ):
-    """Obtener detalle de un legajo."""
-    from src.inscripcion.infrastructure.orm_models import LegajoModel
-    from src.inscripcion.infrastructure.pg_repository import PostgresLegajoRepository
-
-    repo = PostgresLegajoRepository(db)
-    legajo = await repo.obtener_por_id(legajo_id)
-
-    return {
-        "id": legajo.id,
-        "numero_legajo": legajo.numero_legajo,
-        "apellido_nombre": f"{legajo.apellido}, {legajo.nombre}",
-        "dni": str(legajo.dni),
-        "email": str(legajo.email),
-        "tipo_carrera": legajo.tipo_carrera.valor,
-        "estado": legajo.estado.value,
-        "semaforo": legajo.semaforo,
-        "fecha_inscripcion": str(legajo.fecha_inscripcion) if legajo.fecha_inscripcion else None,
-    }
+    return _respuesta_cambio(await _ejecutar(revisar_legajo(legajo_id, PostgresLegajoRepository(db), usuario["email"])))
 
 
-@router.get(
-    "/",
-    summary="Listar legajos con filtros",
-    description="Listar legajos con filtros por estado, cohorte y carrera.",
-    tags=["Listado"],
+@router.post(
+    "/{legajo_id}/observar",
+    response_model=CambioEstadoResponse,
+    summary="Observar (→ OBSERVADO)",
+    description="El aspirante recibe el comentario por email y lo ve en su trámite; corrige y vuelve a enviar.",
 )
-async def api_listar_legajos(
-        cohorte_id: Optional[str] = None,
-        estado: Optional[str] = None,
-        tipo_carrera: Optional[str] = None,
-        db: AsyncSession = Depends(get_db),
-):
-    """Listar legajos con filtros opcionales."""
-    from src.inscripcion.infrastructure.orm_models import LegajoModel
-    from src.inscripcion.infrastructure.pg_repository import PostgresLegajoRepository
-    from src.inscripcion.domain.entities import EstadoLegajo as DomEstadoLegajo
-
-    repo = PostgresLegajoRepository(db)
-    legajos = await repo.listar_en_estado(DomEstadoLegajo.BORRADOR)
-
-    if cohorte_id:
-        legajos = [l for l in legajos if l.cohorte_id == cohorte_id]
-
-    if tipo_carrera:
-        legajos = [l for l in legajos if l.tipo_carrera.valor == tipo_carrera]
-
-    return {
-        "total": len(legajos),
-        "legajos": [
-            {
-                "id": l.id,
-                "numero_legajo": l.numero_legajo,
-                "apellido_nombre": f"{l.apellido}, {l.nombre}",
-                "dni": str(l.dni),
-                "estado": l.estado.value,
-                "tipo_carrera": l.tipo_carrera.valor,
-            }
-            for l in legajos
-        ],
-    }
-
-
-@router.get(
-    "/{legajo_id}/reserva-vencida",
-    summary="Verificar si reserva de vacante venció",
-    description="Verifica si la reserva de 30 días desde COMPLETADO ha vencido (BR-005).",
-    tags=["Validación"],
-)
-async def api_verificar_reserva(
+async def api_observar(
         legajo_id: str,
-        db: AsyncSession = Depends(get_db),
+        datos: ComentarioRequest,
+        db: AsyncSession = Depends(get_db, scope="function"),
+        usuario: dict = Depends(puede_gestionar),
+        notificador: NotificadorEmail = Depends(get_notificador),
 ):
-    """Verificar estado de reserva de vacante."""
-    from src.inscripcion.infrastructure.orm_models import LegajoModel
-    from src.inscripcion.infrastructure.pg_repository import PostgresLegajoRepository
+    caso = observar_legajo(legajo_id, datos.comentario, PostgresLegajoRepository(db), usuario["email"], notificador)
+    return _respuesta_cambio(await _ejecutar(caso))
 
-    repo = PostgresLegajoRepository(db)
-    legajo = await repo.obtener_por_id(legajo_id)
 
-    fecha_completado = legajo.fecha_activacion or legajo.fecha_inscripcion
-    if not fecha_completado:
-        return {"reserva_vencida": False, "mensaje": "Legajo aún no completado"}
+@router.post(
+    "/{legajo_id}/aprobar",
+    response_model=CambioEstadoResponse,
+    summary="Aprobar (EN_REVISION → COMPLETADO)",
+    description=(
+        "Asigna el número de legajo definitivo (AÑO-COHORTE-SECUENCIAL, ej.: 26-001-045) y empieza a correr "
+        "la reserva de vacante de 30 días."
+    ),
+)
+async def api_aprobar(
+        legajo_id: str,
+        db: AsyncSession = Depends(get_db, scope="function"),
+        usuario: dict = Depends(puede_gestionar),
+        notificador: NotificadorEmail = Depends(get_notificador),
+):
+    caso = aprobar_legajo(
+        legajo_id, PostgresLegajoRepository(db), PostgresCohorteRepository(db), usuario["email"], notificador
+    )
+    return _respuesta_cambio(await _ejecutar(caso))
 
-    hoy = date.today()
-    dias_transcurridos = (hoy - fecha_completado).days
-    vencido = dias_transcurridos > 30
-    return {
-        "reserva_vencida": vencido,
-        "dias_desde_completado": dias_transcurridos,
-        "mensaje": "Reserva vencida" if vencido else "Reserva vigente",
-    }
+
+@router.post(
+    "/{legajo_id}/rechazar",
+    response_model=CambioEstadoResponse,
+    summary="Rechazar (EN_REVISION → RECHAZADO)",
+)
+async def api_rechazar(
+        legajo_id: str,
+        datos: MotivoRequest,
+        db: AsyncSession = Depends(get_db, scope="function"),
+        usuario: dict = Depends(puede_gestionar),
+        notificador: NotificadorEmail = Depends(get_notificador),
+):
+    caso = rechazar_legajo(legajo_id, datos.motivo, PostgresLegajoRepository(db), usuario["email"], notificador)
+    return _respuesta_cambio(await _ejecutar(caso))
+
+
+@router.post(
+    "/{legajo_id}/matricular",
+    response_model=CambioEstadoResponse,
+    summary="Matricular (COMPLETADO → ACTIVO)",
+)
+async def api_matricular(
+        legajo_id: str,
+        db: AsyncSession = Depends(get_db, scope="function"),
+        usuario: dict = Depends(puede_gestionar),
+        notificador: NotificadorEmail = Depends(get_notificador),
+):
+    caso = matricular_legajo(legajo_id, PostgresLegajoRepository(db), usuario["email"], notificador)
+    return _respuesta_cambio(await _ejecutar(caso))
+
+
+@router.post(
+    "/{legajo_id}/baja",
+    response_model=CambioEstadoResponse,
+    summary="Dar de baja (COMPLETADO / ACTIVO → BAJA)",
+    description="Pide el motivo (mínimo 10 caracteres), que queda en el historial y se le informa al estudiante.",
+)
+async def api_dar_de_baja(
+        legajo_id: str,
+        datos: MotivoRequest,
+        db: AsyncSession = Depends(get_db, scope="function"),
+        usuario: dict = Depends(puede_gestionar),
+        notificador: NotificadorEmail = Depends(get_notificador),
+):
+    caso = dar_de_baja(legajo_id, datos.motivo, PostgresLegajoRepository(db), usuario["email"], notificador)
+    return _respuesta_cambio(await _ejecutar(caso))

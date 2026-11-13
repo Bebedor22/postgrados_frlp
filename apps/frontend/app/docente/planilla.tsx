@@ -1,8 +1,9 @@
-import {Link, useRouter} from "expo-router";
+/**
+ * Portal Docente (Módulo B): planilla de asistencia y notas. Datos de ejemplo, sin backend todavía.
+ */
+import {useRouter} from "expo-router";
 import {useState} from "react";
-import {Pressable, StyleSheet, Text, View} from "react-native";
-import {scheduleTestNotification} from "../src/lib/notifications";
-import {Marco} from './components/navLeft.tsx';
+import {MarcoDocente} from "../../src/components/portal/MarcoPortal";
 
 const FECHAS = ["12/03", "19/03", "26/03", "02/04", "09/04", "16/04"];
 
@@ -71,6 +72,7 @@ function autoEstado(pct: number, cal: string): { label: string; color: string } 
 }
 
 export default function PlanillaDocente() {
+    const router = useRouter();
     const [rows, setRows] = useState<EstudianteRow[]>(initialEstudiantes);
     const [saved, setSaved] = useState(false);
 
@@ -95,7 +97,7 @@ export default function PlanillaDocente() {
     const handleGuardar = () => setSaved(true);
 
     return (
-        <Marco>
+        <MarcoDocente>
             <div style={{padding: "20px 24px"}}>
 
                 {/* Seminar info bar */}
@@ -126,8 +128,12 @@ export default function PlanillaDocente() {
                             </div>
                         ))}
                     </div>
-                    <Link
+                    <a
                         href="/docente/misCursos"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            router.push("/docente/misCursos");
+                        }}
                         style={{
                             display: "flex",
                             alignItems: "center",
@@ -138,7 +144,7 @@ export default function PlanillaDocente() {
                         }}
                     >
                         {"<"} Volver a mis cursos
-                    </Link>
+                    </a>
                 </div>
 
                 {/* Table */}
@@ -339,7 +345,7 @@ export default function PlanillaDocente() {
                     <div style={{fontSize: "13px", color: "#6b7280"}}>
                         {saved && (
                             <span style={{display: "flex", alignItems: "center", gap: "6px", color: "#16a34a"}}>
-                <CheckCircle2 size={15}/> Cambios guardados correctamente
+                ✓ Cambios guardados correctamente
               </span>
                         )}
                     </div>
@@ -383,6 +389,6 @@ export default function PlanillaDocente() {
                     </div>
                 </div>
             </div>
-        </Marco>
+        </MarcoDocente>
     );
 }

@@ -66,6 +66,7 @@ Lee en este orden antes de escribir código:
 5. 🗓️ [`docs/CRONOGRAMA.md`](docs/CRONOGRAMA.md) — Tu roadmap personal de las próximas 30 semanas
 6. 🚀 [`onboarding/Guia_KickOff.md`](docs/onboarding/GUIA_KICKOFF.md) — Qué entregar en la semana 3
 7. 🔌 [`docs/DATA_MAPPING.md`](docs/DATA_MAPPING.md) — **Mapeo de datos Frontend ↔ Backend (FastAPI)**
+8. ⚡ [`onboarding/GUIA_RAPIDA_CORE.md`](onboarding/GUIA_RAPIDA_CORE.md) — **Cómo levantar y mostrar el Core actual** (backend + frontend, usuarios de prueba, guion de demo)
 ---
 
 ## Estructura de Módulos
@@ -81,38 +82,31 @@ Lee en este orden antes de escribir código:
 
 ## Quickstart — Levantá el entorno en 5 minutos
 
-> **Requisitos previos:** Git · Docker Desktop · Node.js 20+ (o Python 3.11+)
+> **Requisitos previos:** Git · Docker Desktop (no hace falta instalar Node, Python ni Postgres)
+
+> Guía completa (tests, guion de la demo y problemas comunes): [`onboarding/GUIA_RAPIDA_CORE.md`](onboarding/GUIA_RAPIDA_CORE.md)
 
 ```bash
-# 1. Cloná tu repositorio (URL provisto por GitHub)
-git clone https://github.com/desasoftfrlptn/postgrados_frlp.git
-cd postgrado-[NOMBRE-EQUIPO]
+# 1. Cloná el repositorio y entrá a la rama del Core
+git clone https://github.com/Bebedor22/postgrados_frlp.git
+cd postgrados_frlp
+git checkout feature/backend-core
 
-# 2. Configurá variables de entorno
-cp .env.example .env
+# 2. Configurá las variables de entorno (y cambiá JWT_SECRET en el .env)
+cp .env.example .env          # En PowerShell: Copy-Item .env.example .env
 
-# 3. Levantá los servicios (base de datos + backend + frontend)
-docker-compose up -d
-
-# 4. Instalá dependencias
-npm install        # Si usás Node/NestJS
-# -- ó --
-pip install -r requirements.txt  # Si usás Python/FastAPI
-# Wizard Expo:
-cd apps/ingresantes-wizard && npm install
-
-# 5. Ejecutá las migraciones de base de datos
-npm run db:migrate   # Prisma
-# -- ó --
-alembic upgrade head  # SQLAlchemy
-
-# 6. Iniciá el servidor de desarrollo
-cd apps/ingresantes-wizard && npx expo start   # Wizard de Ingresantes
-# -- ó --
-npm run dev      # Si estás trabajando sobre el portal web en paralelo
+# 3. Levantá todo: base de datos, backend, frontend y MailHog.
+#    Las migraciones y los datos de demo se cargan solos la primera vez.
+docker compose up -d --build
 ```
 
-✅ **Criterio de éxito:** El wizard levanta sin errores en Expo y navega entre pasos correctamente.
+| Qué | URL |
+|---|---|
+| Aplicación | http://localhost:8081 |
+| API (Swagger) | http://localhost:8000/api/docs |
+| Emails de prueba (MailHog) | http://localhost:8025 |
+
+✅ **Criterio de éxito:** http://localhost:8081 muestra la inscripción, y con `admin@fenix.test` / `Admin1234!` se entra al portal de conducción con 16 aspirantes de demo.
 
 ---
 

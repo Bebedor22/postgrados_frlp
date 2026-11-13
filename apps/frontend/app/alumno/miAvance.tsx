@@ -1,8 +1,8 @@
-import {Link, useRouter} from "expo-router";
+/**
+ * Portal del Alumno: avance académico. Datos de ejemplo, sin backend todavía.
+ */
 import {useState} from "react";
-import {Pressable, StyleSheet, Text, View} from "react-native";
-import {scheduleTestNotification} from "../src/lib/notifications";
-import {Layout} from '../marco.tsx';
+import {MarcoAlumno} from "../../src/components/portal/MarcoPortal";
 
 const TABS = ["Resumen", "Seminarios", "TFI / Tesis", "Documentación", "Alertas", "Historial"];
 
@@ -58,34 +58,12 @@ function StatusBadge({estado}: { estado: string }) {
     return <span style={{color: colors[estado] ?? "#374151", fontSize: "13px", fontWeight: 500}}>{estado}</span>;
 }
 
-
-function Marco({children}) {
-    const router = useRouter();
-
-    const handleLogout = () => {
-        logout();
-        navigate("/", {replace: true});
-    };
-
-    const navItems = [
-        {icon: "🕮", label: "Mi Avance", to: "/alumno/miAvance", group: "Cursadas"},
-        {icon: "📋", label: "Estado de trámite", to: "/alumno/estadoDeTramite", group: "Gestión"},
-        {icon: "📋", label: "Inscripción", to: "/alumno/inscripcion", group: "Gestión"},
-    ];
-
-    return (
-        <Layout portalTitle="Portal Docente" navItems={navItems}>
-            {children}
-        </Layout>
-    );
-}
-
 export default function MiAvance() {
     const [activeTab, setActiveTab] = useState("Resumen");
     const progreso = 62;
 
     return (
-        <Marco>
+        <MarcoAlumno>
             <div style={{padding: "24px", maxWidth: "1000px"}}>
                 {/* Student card */}
                 <div
@@ -329,8 +307,7 @@ export default function MiAvance() {
                                     fontSize: "13px",
                                     color: "#92400e"
                                 }}>
-                                    <AlertTriangle size={15} color="#d97706"/> Vencimiento de Seminario: 30 días
-                                    restantes
+                                    ⚠️ Vencimiento de Seminario: 30 días restantes
                                 </div>
                                 <div style={{
                                     display: "flex",
@@ -343,20 +320,20 @@ export default function MiAvance() {
                                     fontSize: "13px",
                                     color: "#1e40af"
                                 }}>
-                                    <Info size={15} color="#3b82f6"/> Plazo TFI: 180 días restantes
+                                    ℹ️ Plazo TFI: 180 días restantes
                                 </div>
                             </div>
                         )}
 
                         {!["Resumen", "Alertas"].includes(activeTab) && (
                             <div style={{color: "#6b7280", fontSize: "14px", textAlign: "center", padding: "40px 0"}}>
-                                <FileText size={36} color="#d1d5db" style={{margin: "0 auto 12px", display: "block"}}/>
+                                <div style={{fontSize: "36px", marginBottom: "12px", opacity: 0.4}}>📄</div>
                                 Sección disponible próximamente.
                             </div>
                         )}
                     </div>
                 </div>
             </div>
-        </Marco>
+        </MarcoAlumno>
     );
 }

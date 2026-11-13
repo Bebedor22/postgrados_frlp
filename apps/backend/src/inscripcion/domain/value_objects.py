@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass
+from datetime import date
 from typing import Optional
 
 
@@ -14,6 +15,25 @@ class DNI:
     def __str__(self) -> str:
         return self.valor
 
+@dataclass(frozen=True)
+class Pasaporte:
+    valor: str
+
+    def __post_init__(self) -> None:
+        if not re.match(r"^[A-Za-z0-9]{6,12}$", self.valor):
+            raise ValueError("Pasaporte debe tener entre 6 y 12 letras o números")
+
+    def __str__(self) -> str:
+        return self.valor
+
+
+def crear_documento(tipo: str, numero: str) -> "DNI | Pasaporte":
+    """Crea el value object que corresponde al tipo de documento (DNI o pasaporte)."""
+    if tipo == "DNI":
+        return DNI(numero)
+    if tipo == "PASAPORTE":
+        return Pasaporte(numero.upper())
+    raise ValueError("Tipo de documento inválido: debe ser DNI o PASAPORTE")
 
 @dataclass(frozen=True)
 class Email:

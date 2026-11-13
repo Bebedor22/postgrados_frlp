@@ -1,27 +1,43 @@
 import {Link} from "expo-router";
+import {useEffect, useState} from "react";
 import {Pressable, StyleSheet, Text, View} from "react-native";
-import {scheduleTestNotification} from "../src/lib/notifications";
+import {obtenerTokenTramite} from "../src/lib/sesion";
 
 export default function HomeScreen() {
+    // Si el aspirante ya empezó una inscripción en este navegador, puede retomarla
+    const [tokenTramite, setTokenTramite] = useState<string | null>(null);
+    useEffect(() => setTokenTramite(obtenerTokenTramite()), []);
+
     return (
         <View style={styles.container}>
             <View style={styles.card}>
                 <Text style={styles.kicker}>Sistema de Posgrado</Text>
-                <Text style={styles.title}>Wizard de Ingresantes</Text>
+                <Text style={styles.title}>Inscripción a carreras de posgrado</Text>
                 <Text style={styles.subtitle}>
-                    Base Expo + React Native para la inscripción pública. Login y portal principal van aparte.
+                    UTN Facultad Regional La Plata. Completá tu inscripción en 4 pasos: podés guardar y seguir después.
                 </Text>
 
                 <View style={styles.actions}>
-                    <Link href="/wizard/step-1" asChild>
+                    <Link href="/wizard/inicio" asChild>
                         <Pressable style={styles.primaryButton}>
                             <Text style={styles.primaryButtonText}>Comenzar inscripción</Text>
                         </Pressable>
                     </Link>
 
-                    <Pressable style={styles.secondaryButton} onPress={scheduleTestNotification}>
-                        <Text style={styles.secondaryButtonText}>Probar notificación</Text>
-                    </Pressable>
+                    {tokenTramite ? (
+                        <Link href={`/tramite/${tokenTramite}`} asChild>
+                            <Pressable style={styles.secondaryButton}>
+                                <Text style={styles.secondaryButtonText}>Ver mi inscripción</Text>
+                            </Pressable>
+                        </Link>
+                    ) : null}
+
+                    <Link href="/login" asChild>
+                        <Pressable style={styles.secondaryButton}>
+                            <Text style={styles.secondaryButtonText}>Iniciar sesión (personal de posgrado)</Text>
+                        </Pressable>
+                    </Link>
+
                 </View>
             </View>
         </View>

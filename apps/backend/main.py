@@ -1,14 +1,44 @@
-from fastapi import FastAPI
+import asyncio
+import logging
+from contextlib import asynccontextmanager
+from typing import Dict
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.shared.database.connection import crear_todas_las_tablas, get_db
+from src.shared.config import get_settings
+from src.shared.exceptions import LegajoNoEncontrado
 
 # Importar routers de todos los módulos
+from src.autenticacion.presentation.router import router as router_autenticacion
 from src.inscripcion.presentation.router import router as router_inscripcion
+from src.inscripcion.presentation.router_inscripcion_publica import router as router_inscripcion_publica
+from src.oferta_academica.presentation.router import router_carreras, router_cohortes
 from src.carga_academica.presentation.router import router as router_carga_academica
 from src.seguimiento_graduacion.presentation.router import router as router_seguimiento
 from src.analytics.presentation.router import router as router_analytics
 from src.gestion_documental.presentation.router import router as router_documental
+from src.gestion_documental.presentation.router import router_aspirante as router_documentos_aspirante
+from src.inscripcion.infrastructure.tareas_programadas import ciclo_diario_de_vencimientos
+
+# Muestra en la consola los logs del sistema (emails, tareas programadas)
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s - %(message)s")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Lo que corre al arrancar y al apagar el backend."""
+    # Las tablas las crean las migraciones de Alembic (alembic upgrade head),
+    # que docker-compose ejecuta antes de levantar la API.
+    print("🚀 Sistema de Posgrado Backend iniciado")
+    tarea = None
+    if get_settings().tareas_programadas:
+        tarea = asyncio.create_task(ciclo_diario_de_vencimientos())
+    yield
+    if tarea:
+        tarea.cancel()
+
 
 app = FastAPI(
     title="Sistema de Posgrado - Backend",
@@ -16,12 +46,13 @@ app = FastAPI(
     version="0.1.0",
     docs_url="/api/docs",  # Swagger UI
     redoc_url="/api/redoc",
+    lifespan=lifespan,
 )
 
-# Configurar CORS
+# Configurar CORS: solo los orígenes definidos en CORS_ORIGINS (por defecto, Expo web)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción, especificar dominios permitidos
+    allow_origins=get_settings().lista_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -29,9 +60,34 @@ app.add_middleware(
 
 # Incluir routers de todos los módulos
 app.include_router(
+    router_autenticacion,
+    prefix="/api/v1/auth",
+    tags=["Autenticación"],
+)
+app.include_router(
+    router_carreras,
+    prefix="/api/v1/carreras",
+    tags=["Carreras"],
+)
+app.include_router(
+    router_cohortes,
+    prefix="/api/v1/cohortes",
+    tags=["Cohortes"],
+)
+app.include_router(
+    router_inscripcion_publica,
+    prefix="/api/v1/inscripciones",
+    tags=["Inscripción (aspirante)"],
+)
+app.include_router(
+    router_documentos_aspirante,
+    prefix="/api/v1/inscripciones",
+    tags=["Documentos (aspirante)"],
+)
+app.include_router(
     router_inscripcion,
     prefix="/api/v1/legajos",
-    tags=["Legajos - Módulo Core"],
+    tags=["Legajos (conducción)"],
 )
 app.include_router(
     router_carga_academica,
@@ -51,18 +107,13 @@ app.include_router(
 app.include_router(
     router_documental,
     prefix="/api/v1/documentos",
-    tags=["Gestión Documental"],
+    tags=["Documentos (conducción)"],
 )
 
-
-@app.on_event("startup")
-async def startup_event():
-    """Eventos que se ejecutan al iniciar la aplicación."""
-    # Crear tablas de base de datos si no existen
-    # En producción esto se hace mediante migraciones Alembic
-    # await crear_todas_las_tablas()
-    print("🚀 Sistema de Posgrado Backend iniciado")
-
+@app.exception_handler(LegajoNoEncontrado)
+async def manejar_legajo_no_encontrado(request: Request, exc: LegajoNoEncontrado):
+    """Convierte la excepción de dominio en un 404 en lugar de un error 500."""
+    return JSONResponse(status_code=404, content={"error": exc.message})
 
 @app.get("/", tags=["Root"])
 async def read_root():
@@ -73,16 +124,6 @@ async def read_root():
         "estado": "operativo",
         "documentacion": "/api/docs",
     }
-
-
-# Endpoints de autenticación simples (placeholder)
-@app.post("/api/v1/auth/login", tags=["Autenticación"])
-async def login(
-        # En un sistema real recibirían email/contraseña y verificarían contra BD
-) -> Dict[str, str]:
-    """Endpoint de login placeholder."""
-    return {"access_token": "token-placeholder", "token_type": "bearer"}
-
 
 @app.get("/api/v1/health", tags=["Health"])
 async def health_check() -> Dict[str, str]:

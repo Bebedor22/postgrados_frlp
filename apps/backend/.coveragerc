@@ -1,0 +1,16 @@
+# Cobertura de los tests:  pytest --cov
+[run]
+source = src
+# SQLAlchemy async usa greenlets: sin esto, coverage pierde el rastro del código que corre después de cada consulta
+concurrency = greenlet, thread
+# Módulos de otros equipos (B, C y D): por ahora son solo un router vacío
+omit =
+    src/carga_academica/*
+    src/seguimiento_graduacion/*
+    src/analytics/*
+
+[report]
+show_missing = True
+skip_covered = True
+# La rúbrica pide al menos 70 % de cobertura
+fail_under = 70

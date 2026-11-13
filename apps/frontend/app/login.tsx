@@ -1,5 +1,7 @@
 import {Link, useRouter} from "expo-router";
 import {useState} from "react";
+import {ApiError, login} from "../src/lib/api";
+import {guardarSesion} from "../src/lib/sesion";
 import {Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions} from "react-native";
 
 export default function LoginScreen() {
@@ -18,12 +20,34 @@ export default function LoginScreen() {
     const {width} = useWindowDimensions();
     const isCompact = width < 860;
 
-    const handleLogin = () => {
+    const [error, setError] = useState<string | null>(null);
+    const [aviso, setAviso] = useState<string | null>(null);
+    const [ingresando, setIngresando] = useState(false);
+
+    // El rol lo define el backend (viene en el token); el selector queda como referencia visual
+    const handleLogin = async () => {
+        setError(null);
+        setAviso(null);
         if (!email || !password) {
-            alert("Por favor, completá todos los campos.");
+            setError("Por favor, completá todos los campos.");
             return;
         }
-        console.log("Iniciando sesión con:", email, password, "| Rol seleccionado:", rol);
+        setIngresando(true);
+        try {
+            const sesion = await login(email.trim(), password);
+            guardarSesion(sesion.access_token, sesion.usuario);
+            if (sesion.usuario.rol === "DOCENTE") {
+                router.replace("/docente/misCursos");
+            } else if (sesion.usuario.rol === "COORDINADOR" || sesion.usuario.rol === "DIRECCION") {
+                router.replace("/conduccion");
+            } else {
+                setAviso(`Sesión iniciada: ${sesion.usuario.nombre} (${sesion.usuario.rol}).`);
+            }
+        } catch (e) {
+            setError((e as ApiError).message);
+        } finally {
+            setIngresando(false);
+        }
     };
 
     return (
@@ -86,8 +110,11 @@ export default function LoginScreen() {
                             </Pressable>
                         </View>
 
-                        <Pressable style={styles.primaryButton} onPress={handleLogin}>
-                            <Text style={styles.primaryButtonText}>Ingresar</Text>
+                        {error ? <Text style={{color: "#b91c1c", fontSize: 14}}>{error}</Text> : null}
+                        {aviso ? <Text style={{color: "#047857", fontSize: 14}}>{aviso}</Text> : null}
+
+                        <Pressable style={[styles.primaryButton, ingresando && {opacity: 0.6}]} onPress={handleLogin} disabled={ingresando}>
+                            <Text style={styles.primaryButtonText}>{ingresando ? "Ingresando..." : "Ingresar"}</Text>
                         </Pressable>
 
                         {/* SELECTOR DE ROL */}
@@ -134,7 +161,7 @@ export default function LoginScreen() {
 
                     <View style={styles.footer}>
                         <Text style={styles.footerText}>¿No tenés cuenta? </Text>
-                        <Link href="/wizard/step-1" asChild>
+                        <Link href="/wizard/inicio" asChild>
                             <Pressable>
                                 <Text style={styles.linkText}>Comenzar inscripción</Text>
                             </Pressable>
@@ -246,10 +273,7 @@ const styles = StyleSheet.create({
         borderColor: "#e5e7eb",
         borderRadius: 8,
         elevation: 5,
-        shadowColor: "#000",
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
+        boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
         zIndex: 1000
     },
     dropdownItem: {paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#f3f4f6"},
