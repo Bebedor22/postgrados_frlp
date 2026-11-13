@@ -1,7 +1,9 @@
 # docker-compose.yml — Ambiente de desarrollo Sistema de Posgrado
-# Levantar:  docker compose up -d --build
+# Levantar TODO (base, backend, frontend y MailHog):  docker compose up -d --build
 # Detener:   docker compose down
 # Ver logs:  docker compose logs -f [servicio]
+#
+# Funciona igual en Windows, macOS y Linux: solo hace falta Docker Desktop.
 
 services:
   # ──────────────────────────────────────────
@@ -16,7 +18,8 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgrado_dev_password}
       POSTGRES_DB: ${DB_NAME:-postgrado_dev}
     ports:
-      - "5432:5432"
+      # Si ya tenés un Postgres instalado usando el 5432, poné PUERTO_DB=5433 en el .env
+      - "${PUERTO_DB:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -46,26 +49,40 @@ services:
       SMTP_PORT: 1025
       # Necesario en Windows/Mac para que --reload detecte cambios en el volumen
       WATCHFILES_FORCE_POLLING: "true"
+      # "si" = con la base vacía, carga los datos de demo al arrancar (usuarios, carreras, aspirantes)
+      DATOS_DEMO: ${DATOS_DEMO:-si}
     ports:
       - "8000:8000"
     volumes:
       - ./apps/backend:/app
       - postgrado-storage:/var/postgrado-storage
-    # Aplica las migraciones pendientes y después levanta la API
-    command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+    # Aplica las migraciones, carga los datos de demo si la base está vacía y levanta la API
+    command: sh -c "alembic upgrade head && python -m scripts.seed --automatico && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
   # ──────────────────────────────────────────
-  # FRONTEND (Expo) — comentado por ahora.
-  # El frontend se corre localmente con: cd apps/frontend && npx expo start --web
+  # FRONTEND (Expo web compilado, servido con nginx)
+  # http://localhost:8081
+  # Para desarrollar con recarga automática:  docker compose stop frontend
+  # y después, en apps/frontend:              npx expo start --web
   # ──────────────────────────────────────────
-  # frontend:
-  #   build:
-  #     context: ./apps/frontend
-  #   container_name: postgrado-frontend
-  #   depends_on:
-  #     - backend
-  #   ports:
-  #     - "8081:8081"
+  frontend:
+    build:
+      context: ./apps/frontend
+      args:
+        EXPO_PUBLIC_API_URL: ${EXPO_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+    container_name: postgrado-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8081:80"
 
   # ──────────────────────────────────────────
   # MAILHOG — Servidor de email falso para desarrollo
@@ -89,6 +106,7 @@ volumes:
 #
 # Primera vez:
 #   docker compose up -d --build
+#   Frontend:            http://localhost:8081
 #   Swagger del backend: http://localhost:8000/api/docs
 #
 # Ver emails enviados por el sistema:

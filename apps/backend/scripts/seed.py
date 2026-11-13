@@ -3,6 +3,10 @@
 Uso (con Docker levantado, desde la raíz del repo):
     docker compose exec backend python -m scripts.seed
 
+Con `--automatico` (así lo corre docker-compose al arrancar el backend) solo carga
+los datos si la base está vacía y DATOS_DEMO no es "no". Así nunca pisa lo que se
+hizo durante una demo (por ejemplo, volver a abrir una inscripción cerrada).
+
 Crea:
 - los 4 usuarios de prueba (coordinación, docente, CPR y Dirección);
 - 3 carreras (una de cada tipo);
@@ -14,6 +18,8 @@ Usa los mismos casos de uso que la API, así los datos respetan todas las reglas
 del dominio. Se puede correr más de una vez: lo que ya existe no se duplica.
 """
 import asyncio
+import os
+import sys
 from datetime import date
 
 from src.autenticacion.application.registrar_usuario import UsuarioYaExiste, registrar_usuario
@@ -234,7 +240,22 @@ async def crear_aspirante(datos: tuple, ids_carreras: list[str], cohorte_id: str
         return apellido, token
 
 
+async def hay_datos() -> bool:
+    async with AsyncSessionLocal() as session:
+        return bool(await PostgresCohorteRepository(session).listar())
+
+
 async def main() -> None:
+    if "--automatico" in sys.argv:
+        if os.environ.get("DATOS_DEMO", "si").lower() in ("no", "false", "0"):
+            print("DATOS_DEMO=no: no se cargan datos de demo")
+            await engine.dispose()
+            return
+        if await hay_datos():
+            print("La base ya tiene datos: no se cargan los de demo")
+            await engine.dispose()
+            return
+
     print("\n▶ Usuarios")
     await crear_usuarios()
     print("\n▶ Carreras y cohortes")
