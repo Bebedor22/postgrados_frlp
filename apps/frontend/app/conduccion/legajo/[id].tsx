@@ -10,9 +10,12 @@ import {ActivityIndicator, Text, TextInput, View, useWindowDimensions} from "rea
 import {
     Boton, InsigniaEstado, PortalConduccion, Tarjeta, useUsuarioConduccion,
 } from "../../../src/components/conduccion/PortalConduccion";
+import {SemaforoBadge} from "../../../src/components/conduccion/Semaforo";
 import {ListaDocumentos} from "../../../src/components/wizard/ListaDocumentos";
 import {
-    AccionLegajo, ApiError, DetalleLegajo, accionLegajo, descargarDocumento, detalleLegajo, listarCarreras,
+    AccionLegajo, ApiError, DetalleLegajo, SemaforoFila, TrabajoFinal, accionLegajo,
+    descargarDocumento, detalleLegajo, fijarSemaforo, listarCarreras, obtenerTrabajoFinal,
+    semaforoDeLegajo,
 } from "../../../src/lib/api";
 import {abrirPdfDescargado} from "../../../src/lib/documentos";
 import {ESTADOS, OPCIONES_COMO_CONOCIO, isoAFecha} from "../../../src/lib/formulario";
@@ -74,6 +77,8 @@ export default function DetalleLegajoScreen() {
 
     const [legajo, setLegajo] = useState<DetalleLegajo | null>(null);
     const [carrera, setCarrera] = useState("");
+    const [semaforo, setSemaforo] = useState<SemaforoFila | null>(null);
+    const [trabajoFinal, setTrabajoFinal] = useState<TrabajoFinal | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [exito, setExito] = useState<string | null>(null);
     const [pidiendoTexto, setPidiendoTexto] = useState<"observar" | "rechazar" | "baja" | null>(null);
@@ -85,8 +90,25 @@ export default function DetalleLegajoScreen() {
             .then((l) => {
                 setLegajo(l);
                 listarCarreras().then((c) => setCarrera(c.find((x) => x.id === l.carrera_id)?.nombre ?? ""));
+                if (l.estado === "ACTIVO" || l.estado === "GRADUADO") {
+                    obtenerTrabajoFinal(id).then(setTrabajoFinal).catch(() => setTrabajoFinal(null));
+                    if (usuario?.rol === "COORDINADOR") {
+                        semaforoDeLegajo(id).then(setSemaforo).catch(() => setSemaforo(null));
+                    }
+                }
             })
             .catch((e: ApiError) => (e.status === 401 ? router.replace("/login") : setError(e.message)));
+    }
+
+    async function cambiarVerde(manual: boolean) {
+        try {
+            setSemaforo(await fijarSemaforo(id, manual));
+            setExito(manual
+                ? "VERDE fijado manualmente: el recálculo no lo va a pisar."
+                : "Cálculo automático restaurado.");
+        } catch (e) {
+            setError((e as ApiError).message);
+        }
     }
 
     useEffect(() => {
@@ -172,6 +194,9 @@ export default function DetalleLegajoScreen() {
                                     {e === "COMPLETADO" ? (
                                         <Boton texto="Matricular" tipo="exito" alPresionar={() => ejecutar("matricular", "El aspirante pasó a estudiante activo.")} deshabilitado={procesando}/>
                                     ) : null}
+                                    {e === "ACTIVO" ? (
+                                        <Boton texto="Graduar" tipo="exito" alPresionar={() => ejecutar("graduar", "El legajo quedó graduado.")} deshabilitado={procesando}/>
+                                    ) : null}
                                     {e === "COMPLETADO" || e === "ACTIVO" ? (
                                         <Boton texto="Dar de baja" tipo="peligro" alPresionar={() => setPidiendoTexto("baja")} deshabilitado={procesando}/>
                                     ) : null}
@@ -230,6 +255,52 @@ export default function DetalleLegajoScreen() {
                             </View>
                         ) : null}
                     </Tarjeta>
+
+                    {semaforo || trabajoFinal ? (
+                        <Tarjeta titulo="Seguimiento de graduación (Módulo C)">
+                            {semaforo ? (
+                                <View style={{gap: 8}}>
+                                    <View style={{flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap"}}>
+                                        <SemaforoBadge color={semaforo.semaforo}/>
+                                        <Text style={{fontSize: 13, color: "#374151"}}>
+                                            {semaforo.seminarios_aprobados}/{semaforo.seminarios_obligatorios_total} obligatorios aprobados
+                                            {semaforo.seminarios_adeudados > 0 ? ` · ${semaforo.seminarios_adeudados} adeudados` : ""}
+                                            {semaforo.dias_en_riesgo > 0 ? ` · ${semaforo.dias_en_riesgo} días en este color` : ""}
+                                        </Text>
+                                        {esCoordinador ? (
+                                            <Boton
+                                                texto={semaforo.semaforo_manual ? "Restaurar cálculo" : "Fijar VERDE"}
+                                                tipo="secundario"
+                                                alPresionar={() => cambiarVerde(!semaforo.semaforo_manual)}
+                                            />
+                                        ) : null}
+                                    </View>
+                                    {semaforo.semaforo_manual ? (
+                                        <Text style={{fontSize: 11, color: "#92400e"}}>
+                                            VERDE manual (BR-008): el recálculo automático lo respeta.
+                                        </Text>
+                                    ) : null}
+                                </View>
+                            ) : null}
+                            <View style={{marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: "#f3f4f6"}}>
+                                <Text style={{fontSize: 11, color: "#374151", fontWeight: "700", marginBottom: 4}}>
+                                    TRABAJO FINAL / TESIS
+                                </Text>
+                                {trabajoFinal ? (
+                                    <Text style={{fontSize: 13, color: "#374151", lineHeight: 1.7}}>
+                                        {trabajoFinal.tipo} · {trabajoFinal.titulo}{"\n"}
+                                        Director: {trabajoFinal.director_nombre}{"\n"}
+                                        Aprobación CPR: {isoAFecha(trabajoFinal.fecha_aprobacion_cpr)}
+                                        {trabajoFinal.numero_resolucion ? ` · Res. ${trabajoFinal.numero_resolucion}` : ""}
+                                    </Text>
+                                ) : (
+                                    <Text style={{fontSize: 13, color: "#6b7280"}}>
+                                        Sin trabajo final registrado (lo carga el CPR).
+                                    </Text>
+                                )}
+                            </View>
+                        </Tarjeta>
+                    ) : null}
 
                     <View style={{flexDirection: compacto ? "column" : "row", gap: 16, alignItems: "flex-start"}}>
                         {/* Datos del formulario */}

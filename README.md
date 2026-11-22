@@ -73,10 +73,12 @@ Lee en este orden antes de escribir código:
 
 | Módulo | Descripción | Estado |
 |--------|-------------|--------|
-| **CORE** *(todos los equipos)* | Inscripción, legajo digital, workflow de estados, gestión documental | 🟡 En kickoff |
-| **MOD-B** | Gestión Docente: asistencia digital, calificaciones, recordatorios automáticos | 🔴 Pendiente |
-| **MOD-C** | Seguimiento de Graduación: TFI/Tesis, semáforo de riesgo académico | 🔴 Pendiente |
-| **MOD-D** | Analytics & Reporting: dashboards, estadísticas por cohorte, exportación | 🔴 Pendiente |
+| **CORE** *(todos los equipos)* | Inscripción, legajo digital, workflow de estados, gestión documental | ✅ Implementado |
+| **MOD-B** | Carga Académica mínima: seminarios por carrera, inscripciones, notas finales y progreso | ✅ Implementado (sin planilla de asistencia, fuera del alcance mínimo) |
+| **MOD-C** | Seguimiento de Graduación: TFI/Tesis, semáforo de riesgo académico, alertas y exportación | ✅ Implementado (portal CPR + dashboard de conducción); ver `docs/adr/ADR-006-modulo-c-decisiones.md` |
+| **MOD-D** | Analytics & Reporting: dashboards, estadísticas por cohorte, exportación | 🟡 Backend listo, frontend pendiente |
+
+Los módulos B, C y D viven en `apps/backend/src/{carga_academica,seguimiento_graduacion,analytics}/`. Ante discrepancias entre documentos, prevalecen `docs/SRS.md` y `docs/ARQUITECTURA.md` (ver ADR-006).
 
 ---
 

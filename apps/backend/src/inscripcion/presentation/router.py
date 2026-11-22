@@ -15,6 +15,7 @@ from src.inscripcion.application.gestionar_legajos import (
     aprobar_legajo,
     buscar_legajos,
     dar_de_baja,
+    graduar_legajo,
     legajos_para_exportar,
     matricular_legajo,
     obtener_detalle,
@@ -295,4 +296,23 @@ async def api_dar_de_baja(
         notificador: NotificadorEmail = Depends(get_notificador),
 ):
     caso = dar_de_baja(legajo_id, datos.motivo, PostgresLegajoRepository(db), usuario["email"], notificador)
+    return _respuesta_cambio(await _ejecutar(caso))
+
+
+@router.post(
+    "/{legajo_id}/graduar",
+    response_model=CambioEstadoResponse,
+    summary="Graduar (ACTIVO → GRADUADO)",
+    description=(
+        "Cierra el ciclo académico del estudiante y guarda la fecha de graduación, que usan las "
+        "métricas del Módulo D. También se puede disparar automáticamente al registrar el TFI/Tesis."
+    ),
+)
+async def api_graduar(
+        legajo_id: str,
+        db: AsyncSession = Depends(get_db, scope="function"),
+        usuario: dict = Depends(puede_gestionar),
+        notificador: NotificadorEmail = Depends(get_notificador),
+):
+    caso = graduar_legajo(legajo_id, PostgresLegajoRepository(db), usuario["email"], notificador)
     return _respuesta_cambio(await _ejecutar(caso))

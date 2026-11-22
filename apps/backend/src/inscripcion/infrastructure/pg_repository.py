@@ -253,6 +253,11 @@ class PostgresLegajoRepository(LegajoRepository):
         legajo.fecha_activacion = fecha
         await self._session.flush()
 
+    async def registrar_graduacion(self, legajo_id: str, fecha: datetime) -> None:
+        legajo = await self._obtener_modelo(legajo_id)
+        legajo.fecha_graduacion = fecha
+        await self._session.flush()
+
     async def fecha_de_estado(self, legajo_id: str, estado: EstadoLegajo) -> Optional[datetime]:
         result = await self._session.execute(
             select(func.max(AuditoriaLegajoModel.created_at))
@@ -311,8 +316,10 @@ class PostgresLegajoRepository(LegajoRepository):
             estado=legajo.estado.value,
             fecha_inscripcion=legajo.fecha_inscripcion,
             fecha_activacion=legajo.fecha_activacion,
+            fecha_graduacion=legajo.fecha_graduacion,
             semaforo=legajo.semaforo,
             semaforo_manual=legajo.semaforo_manual,
+            semaforo_desde=legajo.semaforo_desde,
         )
 
     @staticmethod
@@ -334,6 +341,8 @@ class PostgresLegajoRepository(LegajoRepository):
             estado=EstadoLegajo(modelo.estado),
             fecha_inscripcion=modelo.fecha_inscripcion,
             fecha_activacion=modelo.fecha_activacion,
+            fecha_graduacion=modelo.fecha_graduacion,
             semaforo=modelo.semaforo,
             semaforo_manual=modelo.semaforo_manual,
+            semaforo_desde=modelo.semaforo_desde,
         )

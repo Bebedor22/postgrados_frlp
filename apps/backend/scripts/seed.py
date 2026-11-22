@@ -14,7 +14,8 @@ Crea:
 - 16 aspirantes ficticios en la Cohorte 2027, repartidos en todos los estados del workflow,
   con sus documentos PDF de ejemplo (los que ya enviaron la inscripción);
 - los seminarios de cada carrera (Módulo B), con inscripciones y notas de los
-  estudiantes avanzados.
+  estudiantes avanzados, un trabajo final por legajo y antigüedad de cursada, para
+  que el semáforo de riesgo (Módulo C) y las métricas (Módulo D) tengan datos.
 
 Usa los mismos casos de uso que la API, así los datos respetan todas las reglas
 del dominio. Se puede correr más de una vez: lo que ya existe no se duplica.
@@ -22,7 +23,9 @@ del dominio. Se puede correr más de una vez: lo que ya existe no se duplica.
 import asyncio
 import os
 import sys
-from datetime import date
+from datetime import date, timedelta
+
+from sqlalchemy import text
 
 from src.autenticacion.application.registrar_usuario import UsuarioYaExiste, registrar_usuario
 from src.carga_academica.application.gestionar_seminarios import (
@@ -39,11 +42,13 @@ from src.autenticacion.infrastructure.bcrypt_hasher import BcryptHasher
 from src.autenticacion.infrastructure.pg_repository import PostgresUsuarioRepository
 from src.inscripcion.application.gestionar_legajos import (
     aprobar_legajo,
+    graduar_legajo,
     matricular_legajo,
     observar_legajo,
     rechazar_legajo,
     revisar_legajo,
 )
+from src.inscripcion.domain.entities import EstadoLegajo
 from src.inscripcion.application.inscripcion_por_pasos import (
     confirmar_inscripcion,
     consultar_tramite,
@@ -55,6 +60,12 @@ from src.inscripcion.infrastructure.pg_repository import PostgresLegajoRepositor
 from src.oferta_academica.application.gestionar_carreras import CarreraYaExiste, crear_carrera
 from src.oferta_academica.application.gestionar_cohortes import cambiar_estado_inscripcion, crear_cohorte
 from src.oferta_academica.infrastructure.pg_repository import PostgresCarreraRepository, PostgresCohorteRepository
+from src.seguimiento_graduacion.application.gestionar_trabajos_finales import registrar_trabajo_final
+from src.seguimiento_graduacion.application.recalcular_semaforos import recalcular_semaforos
+from src.seguimiento_graduacion.infrastructure.pg_repository import (
+    PostgresSeguimientoRepository,
+    PostgresTrabajoFinalRepository,
+)
 from src.shared.config import get_settings
 from src.shared.database.connection import AsyncSessionLocal, engine
 
@@ -84,6 +95,9 @@ SEMINARIOS = [
 
 # Nota final de los legajos que ya cerraron la cursada (los demás quedan CURSANDO)
 NOTAS_FINALES = {"Fernández": 9.0, "Benítez": 8.5}
+
+# Antigüedad de la cursada (días) para que el semáforo muestre los tres colores
+ANTIGUEDAD_CURSADA = {"Romero": 900, "Medina": 500}
 
 # (apellido, nombre, DNI, índice de carrera, estado final, ¿beca?)
 ASPIRANTES = [
@@ -315,6 +329,79 @@ async def cargar_carga_academica(cohorte_id: str) -> None:
         await session.commit()
 
 
+async def cargar_seguimiento(cohorte_id: str) -> None:
+    """Registra trabajos finales y antigüedad de cursada para ver el semáforo con los tres colores.
+
+    - Romero (Maestría): cursada vieja + seminarios sin cerrar → ROJO.
+    - Medina (Especialización): cursada a medio camino y sin trabajo final → AMARILLO.
+    - Fernández y Benítez: todo al día → VERDE.
+    """
+    async with AsyncSessionLocal() as session:
+        repo_legajos = PostgresLegajoRepository(session)
+        repo_trabajos = PostgresTrabajoFinalRepository(session)
+
+        por_apellido = {}
+        for estado in (EstadoLegajo.ACTIVO, EstadoLegajo.COMPLETADO):
+            legajos, _ = await repo_legajos.buscar(
+                FiltrosLegajos(cohorte_id=cohorte_id, estado=estado, por_pagina=100)
+            )
+            for legajo in legajos:
+                por_apellido[legajo.apellido] = legajo
+
+        for apellido, dias in ANTIGUEDAD_CURSADA.items():
+            legajo = por_apellido.get(apellido)
+            if legajo is None:
+                continue
+            # La fecha se calcula en Python para que el resultado no dependa de la
+            # zona horaria de la BD (el semáforo también compara con `date.today()`).
+            await session.execute(
+                text("UPDATE legajos SET fecha_activacion = :fecha WHERE id = :id"),
+                {"id": legajo.id, "fecha": date.today() - timedelta(days=dias)},
+            )
+            print(f"  ✔ {apellido}: cursada de {dias} días (para el semáforo)")
+
+        romero = por_apellido.get("Romero")
+        if romero is not None and await repo_trabajos.obtener_por_legajo(romero.id) is None:
+            await registrar_trabajo_final(
+                legajo_id=romero.id, tipo="TFI",
+                titulo="Plataforma de seguimiento académico para posgrado",
+                director_nombre="Mg. Patricia Ruiz", director_email="p.ruiz@frlp.utn.edu.ar",
+                repo=repo_trabajos,
+            )
+            print("  ✔ Romero: trabajo final (TFI) con director asignado")
+
+        benitez = por_apellido.get("Benítez")
+        if benitez is not None:
+            if await repo_trabajos.obtener_por_legajo(benitez.id) is None:
+                await registrar_trabajo_final(
+                    legajo_id=benitez.id, tipo="TESIS",
+                    titulo="Modelos de riesgo académico en programas de posgrado",
+                    director_nombre="Dr. Alejandro Vega", director_email="a.vega@frlp.utn.edu.ar",
+                    fecha_aprobacion_cpr=date.today() - timedelta(days=60),
+                    numero_resolucion="CPR-2026-014",
+                    repo=repo_trabajos,
+                )
+                print("  ✔ Benítez: tesis aprobada en CPR (lista para graduarse)")
+            # Cierra el ciclo: así el dashboard tiene un graduado y el tiempo de graduación
+            if benitez.estado == EstadoLegajo.COMPLETADO:
+                await matricular_legajo(benitez.id, repo_legajos, COORDINADOR)
+                await graduar_legajo(benitez.id, repo_legajos, COORDINADOR)
+                print("  ✔ Benítez: matriculado y graduado (para las métricas)")
+        await session.commit()
+
+
+async def recalcular_semaforos_demo() -> None:
+    """Guarda el color del semáforo de los activos: es lo que ven el dashboard y las métricas.
+
+    Normalmente lo hace el ciclo diario del backend; acá se corre una vez para que la
+    demo muestre los tres colores sin esperar al arranque.
+    """
+    async with AsyncSessionLocal() as session:
+        resultado = await recalcular_semaforos(PostgresSeguimientoRepository(session))
+        await session.commit()
+    print(f"  ✔ {resultado.evaluados} legajos activos evaluados, {resultado.actualizados} actualizaron su color")
+
+
 async def hay_datos() -> bool:
     async with AsyncSessionLocal() as session:
         return bool(await PostgresCohorteRepository(session).listar())
@@ -353,6 +440,10 @@ async def main() -> None:
 
     print("\n▶ Carga académica (inscripciones y notas)")
     await cargar_carga_academica(cohorte_id)
+    print("\n▶ Seguimiento de graduación (trabajos finales y semáforo)")
+    await cargar_seguimiento(cohorte_id)
+    print("\n▶ Semáforo de riesgo")
+    await recalcular_semaforos_demo()
     await engine.dispose()
 
     url = get_settings().frontend_url
@@ -362,6 +453,8 @@ async def main() -> None:
     if links:
         print(f"  Trámite observado (Ríos):        {url}/tramite/{links['Ríos']}")
         print(f"  Trámite a medio completar (Torres): {url}/tramite/{links['Torres']}")
+        print(f"  Avance con semáforo ROJO (Romero): {url}/tramite/{links['Romero']}")
+        print(f"  Avance de graduada (Benítez):      {url}/tramite/{links['Benítez']}")
     print()
 
 

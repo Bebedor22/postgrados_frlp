@@ -14,6 +14,8 @@ export const ROLES_CONDUCCION = ["COORDINADOR", "DIRECCION"];
 const MENU = [
     {texto: "Inscriptos y legajos", ruta: "/conduccion", icono: "📋"},
     {texto: "Seminarios", ruta: "/conduccion/seminarios", icono: "🕮"},
+    {texto: "Semáforo", ruta: "/conduccion/semaforo", icono: "🚦"},
+    {texto: "En riesgo", ruta: "/conduccion/en-riesgo", icono: "⚠️"},
 ];
 
 /** Devuelve el usuario logueado; si no hay sesión o no tiene un rol de conducción, manda al login. */

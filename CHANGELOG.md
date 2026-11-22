@@ -15,6 +15,25 @@ Este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 - Estructura inicial del repositorio
 - Documentación base: SRS, PRD, BFD, Arquitectura, Cronograma
 
+### Módulo B — Carga Académica (alcance mínimo, implementado)
+- Seminarios por carrera (obligatorios u optativos), inscripción de legajos y carga de notas finales con BR-003 (`nota >= 4` aprueba)
+- Progreso de seminarios obligatorios por legajo y endpoint público `/inscripciones/{token}/avance` para el portal del alumno
+- Catálogo y alta de seminarios en conducción, cursos y notas en el portal docente, y "Mi Avance" conectado
+- Datos de demo: seminarios por carrera, inscripciones, notas y links de muestra en `scripts/seed.py`
+
+### Módulo C — Seguimiento de Graduación (implementado)
+- `calcular_semaforo()` como función pura con reglas por tipo de carrera (RF-GRAD-002) y `semaforo`/`semaforo_manual` persistidos
+- Registro y edición de TFI/Tesis (RF-GRAD-001, BR-004) con graduación automática al tener fecha CPR y no adeudar seminarios
+- Endpoints de semáforo por legajo, verde manual con restauración (BR-008), `/graduacion/semaforo`, `/graduacion/en-riesgo` (alias antiguo deprecated) y graduación manual
+- Alertas por email a la coordinación cuando un legajo pasa a ROJO (US-C-004) y exportación a Excel del listado en riesgo (US-C-003)
+- Búsqueda CPR de legajos para TFI sin exponer la bandeja completa; portal CPR con login, alta y edición de tesis
+- Dashboard de semáforo y pantalla "En riesgo" en conducción; panel de seguimiento en el detalle del legajo
+- Recálculo diario a las 2:00 y vencimiento de reservas a las 3:00 en el ciclo de tareas (ADR-006)
+- 162 tests del backend (90,65 % de cobertura, módulos B/C/D incluidos), 10 tests unitarios nuevos de límites/graduación/override y 6 de integración de la API de graduación
+- `docs/adr/ADR-006-modulo-c-decisiones.md`: decisiones y reconciliación de contradicciones documentales
+
+**Nota:** las decisiones de diseño de B y C están registradas en `docs/adr/ADR-006-modulo-c-decisiones.md`; el SRS y `ARQUITECTURA.md` son la fuente de verdad ante discrepancias con PRD/BFD.
+
 ---
 
 ## [v1.0.0-core] — Entrega final del Core (17/11/2026)

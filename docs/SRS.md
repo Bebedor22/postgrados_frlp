@@ -261,8 +261,10 @@ Escenario: Cambio a rojo dispara alerta
   Y se envía notificación automática
 
 Escenario: Solo el coordinador puede asignar VERDE manualmente
-  El sistema automáticamente asigna AMARILLO y ROJO
-  El VERDE solo puede ser asignado manualmente por el coordinador (BR-008)
+  El sistema asigna AMARILLO y ROJO automáticamente según los umbrales
+  El VERDE se asigna automáticamente mientras el legajo está dentro de plazo
+  El coordinador puede FORZAR el VERDE (semaforo_manual=true, BR-008);
+  el recálculo diario no pisa ese valor hasta que el coordinador lo restaure
 ```
 
 ---

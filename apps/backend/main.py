@@ -16,11 +16,12 @@ from src.inscripcion.presentation.router import router as router_inscripcion
 from src.inscripcion.presentation.router_inscripcion_publica import router as router_inscripcion_publica
 from src.oferta_academica.presentation.router import router_carreras, router_cohortes
 from src.carga_academica.presentation.router import router as router_carga_academica
+from src.carga_academica.presentation.router_avance import router as router_avance_alumno
 from src.seguimiento_graduacion.presentation.router import router as router_seguimiento
 from src.analytics.presentation.router import router as router_analytics
 from src.gestion_documental.presentation.router import router as router_documental
 from src.gestion_documental.presentation.router import router_aspirante as router_documentos_aspirante
-from src.inscripcion.infrastructure.tareas_programadas import ciclo_diario_de_vencimientos
+from src.inscripcion.infrastructure.tareas_programadas import ciclo_diario_de_tareas
 
 # Muestra en la consola los logs del sistema (emails, tareas programadas)
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s - %(message)s")
@@ -34,7 +35,7 @@ async def lifespan(_app: FastAPI):
     print("🚀 Sistema de Posgrado Backend iniciado")
     tarea = None
     if get_settings().tareas_programadas:
-        tarea = asyncio.create_task(ciclo_diario_de_vencimientos())
+        tarea = asyncio.create_task(ciclo_diario_de_tareas())
     yield
     if tarea:
         tarea.cancel()
@@ -85,6 +86,11 @@ app.include_router(
     tags=["Documentos (aspirante)"],
 )
 app.include_router(
+    router_avance_alumno,
+    prefix="/api/v1/inscripciones",
+    tags=["Mi avance (aspirante) - Módulo B"],
+)
+app.include_router(
     router_inscripcion,
     prefix="/api/v1/legajos",
     tags=["Legajos (conducción)"],
@@ -96,7 +102,7 @@ app.include_router(
 )
 app.include_router(
     router_seguimiento,
-    prefix="/api/v1/graduacion",
+    prefix="/api/v1",
     tags=["Seguimiento de Graduación - Módulo C"],
 )
 app.include_router(

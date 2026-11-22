@@ -21,6 +21,7 @@ import src.carga_academica.infrastructure.orm_models  # noqa: F401
 import src.gestion_documental.infrastructure.orm_models  # noqa: F401
 import src.inscripcion.infrastructure.orm_models  # noqa: F401
 import src.oferta_academica.infrastructure.orm_models  # noqa: F401
+import src.seguimiento_graduacion.infrastructure.orm_models  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", get_settings().database_url)

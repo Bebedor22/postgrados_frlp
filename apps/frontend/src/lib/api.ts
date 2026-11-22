@@ -260,7 +260,7 @@ export async function descargarDocumento(documentoId: string): Promise<Blob> {
     return respuesta.blob();
 }
 
-export type AccionLegajo = "revisar" | "observar" | "aprobar" | "rechazar" | "matricular" | "baja";
+export type AccionLegajo = "revisar" | "observar" | "aprobar" | "rechazar" | "matricular" | "baja" | "graduar";
 
 /** Cambia el estado de un legajo. "observar" pide comentario; "rechazar" y "baja" piden motivo. */
 export function accionLegajo(id: string, accion: AccionLegajo, texto?: string) {
@@ -351,3 +351,144 @@ export const registrarNotasSeminario = (id: string, notas: NotaFinal[]) =>
 
 export const progresoSeminarios = (legajoId: string) =>
     pedir<ProgresoSeminarios>(`/seminarios/progreso?legajo_id=${encodeURIComponent(legajoId)}`, {}, true);
+
+// ── Mi avance (aspirante, con el token del trámite) ──────────────────────────
+
+export interface CursadaAlumno {
+    seminario_id: string;
+    codigo: string;
+    nombre: string;
+    horas_catedra: number;
+    es_obligatorio: boolean;
+    estado: EstudianteSeminario["estado"];
+    nota_final: number | null;
+}
+
+export interface AvanceAlumno {
+    legajo_id: string;
+    numero_legajo: string;
+    estado: string;
+    progreso: ProgresoSeminarios;
+    seminarios: CursadaAlumno[];
+    semaforo: "VERDE" | "AMARILLO" | "ROJO";
+    trabajo_final: {
+        tipo: string;
+        titulo: string;
+        director_nombre: string;
+        fecha_aprobacion_cpr: string | null;
+    } | null;
+}
+
+/** Endpoint público: el token del link es la credencial, no hace falta sesión. */
+export const avanceAlumno = (token: string) =>
+    pedir<AvanceAlumno>(`/inscripciones/${encodeURIComponent(token)}/avance`);
+
+// ── Módulo C: seguimiento de graduación ─────────────────────────────────────
+
+export interface SemaforoFila {
+    legajo_id: string;
+    numero_legajo: string;
+    apellido: string;
+    nombre: string;
+    carrera: string;
+    tipo_carrera: string;
+    fecha_inscripcion: string | null;
+    semaforo: "VERDE" | "AMARILLO" | "ROJO";
+    semaforo_manual: boolean;
+    semaforo_desde: string | null;
+    dias_en_riesgo: number;
+    seminarios_obligatorios_total: number;
+    seminarios_aprobados: number;
+    seminarios_adeudados: number;
+    tiene_tfi_registrado: boolean;
+    tiene_fecha_cpr: boolean;
+}
+
+export interface EnRiesgoResponse {
+    total: number;
+    legajos: SemaforoFila[];
+}
+
+export interface TrabajoFinal {
+    id: string;
+    legajo_id: string;
+    tipo: "TFI" | "TESIS";
+    titulo: string;
+    director_nombre: string;
+    director_email: string;
+    codirector_nombre: string | null;
+    fecha_aprobacion_cpr: string | null;
+    numero_resolucion: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+}
+
+export interface TrabajoFinalDatos {
+    tipo: "TFI" | "TESIS";
+    titulo: string;
+    director_nombre: string;
+    director_email: string;
+    codirector_nombre?: string | null;
+    fecha_aprobacion_cpr?: string | null;
+    numero_resolucion?: string | null;
+    limpiar_fecha_cpr?: boolean;
+}
+
+export interface LegajoTesisItem {
+    legajo_id: string;
+    numero_legajo: string;
+    apellido: string;
+    nombre: string;
+    carrera: string;
+    estado: string;
+    tiene_trabajo_final: boolean;
+}
+
+/** Color almacenado de todos los activos (ASR-003: el front nunca calcula el color). */
+export const semaforoActivos = () => pedir<EnRiesgoResponse>("/graduacion/semaforo", {}, true);
+export const legajosEnRiesgo = () => pedir<EnRiesgoResponse>("/graduacion/en-riesgo", {}, true);
+export const semaforoDeLegajo = (legajoId: string) =>
+    pedir<SemaforoFila>(`/legajos/${legajoId}/semaforo`, {}, true);
+
+/** BR-008: `manual: true` fija VERDE; `false` restaura el cálculo automático. */
+export const fijarSemaforo = (legajoId: string, manual: boolean) =>
+    pedir<SemaforoFila>(
+        `/legajos/${legajoId}/semaforo/verde`,
+        {method: "PATCH", body: JSON.stringify({manual})},
+        true,
+    );
+
+export const obtenerTrabajoFinal = (legajoId: string) =>
+    pedir<TrabajoFinal>(`/legajos/${legajoId}/trabajo-final`, {}, true);
+
+export const registrarTrabajoFinal = (legajoId: string, datos: TrabajoFinalDatos) =>
+    pedir<TrabajoFinal>(
+        `/legajos/${legajoId}/trabajo-final`, {method: "POST", body: JSON.stringify(datos)}, true,
+    );
+
+export const editarTrabajoFinal = (trabajoId: string, datos: TrabajoFinalDatos) =>
+    pedir<TrabajoFinal>(
+        `/trabajos-finales/${trabajoId}`, {method: "PATCH", body: JSON.stringify(datos)}, true,
+    );
+
+/** Búsqueda reducida para el CPR (BR-004), sin acceso a la bandeja completa. */
+export const legajosParaTesis = (buscar: string = "") =>
+    pedir<LegajoTesisItem[]>(`/tesis/legajos?buscar=${encodeURIComponent(buscar)}`, {}, true);
+
+/** US-C-003: Excel con los legajos en ROJO, ordenados por criticidad. */
+export async function exportarEnRiesgo(): Promise<Blob> {
+    let respuesta: Response;
+    try {
+        respuesta = await fetch(`${API_URL}/graduacion/en-riesgo/exportar`, {
+            headers: {Authorization: `Bearer ${obtenerTokenSesion() ?? ""}`},
+        });
+    } catch {
+        throw new ApiError(0, "No se pudo conectar con el servidor.");
+    }
+    if (!respuesta.ok) {
+        if (respuesta.status === 401) cerrarSesion();
+        const cuerpo = await respuesta.json().catch(() => null);
+        throw new ApiError(respuesta.status, mensajeDeError(cuerpo?.detail, respuesta.status));
+    }
+    return respuesta.blob();
+}

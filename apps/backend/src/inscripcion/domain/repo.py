@@ -120,6 +120,10 @@ class LegajoRepository:
     async def registrar_activacion(self, legajo_id: str, fecha: datetime) -> None:
         raise NotImplementedError("Implementar en pg_repository.py")
 
+    async def registrar_graduacion(self, legajo_id: str, fecha: datetime) -> None:
+        """Guardar la fecha en que el estudiante se graduó."""
+        raise NotImplementedError("Implementar en pg_repository.py")
+
     async def fecha_de_estado(self, legajo_id: str, estado: EstadoLegajo) -> Optional[datetime]:
         """Última fecha en que el legajo entró al estado indicado (según la auditoría)."""
         raise NotImplementedError("Implementar en pg_repository.py")

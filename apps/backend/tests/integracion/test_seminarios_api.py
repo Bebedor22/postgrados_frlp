@@ -116,6 +116,33 @@ async def test_docente_solo_gestiona_su_propio_seminario(cliente, cabeceras, ofe
     assert r.status_code == 403
 
 
+async def test_avance_del_alumno_con_el_token(cliente, cabeceras, oferta, inscribir):
+    """El aspirante ve su carga académica con el token de su link, sin login."""
+    seminario = await _crear_seminario(cliente, cabeceras, oferta["carreras"][0])
+    token, legajo_id = await inscribir()
+    await cliente.post(
+        f"/seminarios/{seminario['id']}/estudiantes", json={"legajo_id": legajo_id},
+        headers=cabeceras["COORDINADOR"],
+    )
+    await cliente.patch(
+        f"/seminarios/{seminario['id']}/notas",
+        json={"notas": [{"legajo_id": legajo_id, "nota": 9}]},
+        headers=cabeceras["DOCENTE"],
+    )
+
+    r = await cliente.get(f"/inscripciones/{token}/avance")
+    assert r.status_code == 200, r.text
+    avance = r.json()
+    assert avance["legajo_id"] == legajo_id
+    assert avance["progreso"] == {"obligatorios_total": 1, "aprobados": 1, "adeudados": 0}
+    assert avance["seminarios"][0]["estado"] == "APROBADO"
+    assert avance["seminarios"][0]["nota_final"] == 9.0
+    assert avance["semaforo"] == "VERDE"
+    assert avance["trabajo_final"] is None
+
+    assert (await cliente.get("/inscripciones/no-existe/avance")).status_code == 404
+
+
 async def test_docente_solo_ve_sus_seminarios(cliente, cabeceras, oferta):
     """El listado del portal docente trae solo los seminarios donde está asignado."""
     propio = await _crear_seminario(cliente, cabeceras, oferta["carreras"][0])

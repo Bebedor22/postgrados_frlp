@@ -182,6 +182,21 @@ async def matricular_legajo(
     return legajo
 
 
+async def graduar_legajo(
+        legajo_id: str,
+        repo: LegajoRepository,
+        usuario_email: str,
+        notificador: Notificador = SinNotificaciones(),
+) -> Legajo:
+    """ACTIVO → GRADUADO: cierra el ciclo académico y guarda la fecha de graduación."""
+    legajo = await _cambiar_estado(
+        legajo_id, EstadoLegajo.GRADUADO, repo, usuario_email, "Graduado: completó la carrera"
+    )
+    await repo.registrar_graduacion(legajo_id, datetime.now())
+    notificador.legajo_graduado(legajo)
+    return legajo
+
+
 async def dar_de_baja(
         legajo_id: str,
         motivo: str,

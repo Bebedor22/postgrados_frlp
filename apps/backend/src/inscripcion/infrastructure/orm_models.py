@@ -52,8 +52,10 @@ class LegajoModel(Base):
     estado = Column(String(30), nullable=False, default="BORRADOR")
     fecha_inscripcion = Column(DateTime, nullable=True)
     fecha_activacion = Column(DateTime, nullable=True)
+    fecha_graduacion = Column(DateTime, nullable=True)
     semaforo = Column(String(10), nullable=False, default="VERDE")
     semaforo_manual = Column(Boolean, nullable=False, default=False)
+    semaforo_desde = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

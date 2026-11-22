@@ -29,8 +29,14 @@ class Notificador:
     def legajo_matriculado(self, legajo: Legajo) -> None:
         pass
 
+    def legajo_graduado(self, legajo: Legajo) -> None:
+        pass
+
     def legajo_dado_de_baja(self, legajo: Legajo, motivo: str) -> None:
         pass
+
+    def legajo_en_riesgo(self, legajo: Legajo, motivo: str, dias_restantes: int) -> None:
+        """US-C-004: avisa a la coordinación cuando un legajo pasa a ROJO."""
 
     def reservas_vencidas(self, legajos: list[Legajo]) -> None:
         """BR-005: se avisa a cada aspirante y a la coordinación (SRS: "notifica al coordinador")."""

@@ -84,6 +84,16 @@ export default function TramiteScreen() {
                         </Text>
                     </View>
 
+                    <View style={{marginTop: 4}}>
+                        <Link href="/alumno/miAvance" asChild>
+                            <Pressable>
+                                <Text style={{fontSize: 13, color: "#1d6b59", fontWeight: "600"}}>
+                                    Ver mi avance académico ›
+                                </Text>
+                            </Pressable>
+                        </Link>
+                    </View>
+
                     {observacion ? (
                         <View style={[wizardStyles.section, {backgroundColor: "#fffbeb", borderWidth: 1, borderColor: "#f59e0b"}]}>
                             <Text style={[wizardStyles.sectionTitle, {color: "#b45309"}]}>Observación de la coordinación</Text>

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 
@@ -92,8 +92,10 @@ class Legajo:
     estado: EstadoLegajo = EstadoLegajo.BORRADOR
     fecha_inscripcion: Optional[date] = None
     fecha_activacion: Optional[date] = None
+    fecha_graduacion: Optional[date] = None
     semaforo: str = "VERDE"
     semaforo_manual: bool = False
+    semaforo_desde: Optional[datetime] = None
     carrera_id: Optional[str] = None
     tipo_documento: str = "DNI"
 

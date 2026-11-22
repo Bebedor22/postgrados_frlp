@@ -82,6 +82,14 @@ class NotificadorEmail(Notificador):
             f"Ya sos estudiante activo/a. Tu número de legajo es {legajo.numero_legajo}.",
         )
 
+    def legajo_graduado(self, legajo: Legajo) -> None:
+        self._al_aspirante(
+            legajo,
+            "¡Felicitaciones por tu graduación!",
+            f"Completaste tu carrera. Tu legajo N° {legajo.numero_legajo} quedó en estado GRADUADO.\n\n"
+            "La Secretaría de Posgrado se va a comunicar con vos para los trámites del título.",
+        )
+
     def legajo_dado_de_baja(self, legajo: Legajo, motivo: str) -> None:
         self._al_aspirante(
             legajo,
@@ -89,6 +97,18 @@ class NotificadorEmail(Notificador):
             f"Tu legajo N° {legajo.numero_legajo} fue dado de baja. Motivo:\n\n    {motivo}\n\n"
             "Si creés que se trata de un error, comunicate con la Secretaría de Posgrado.",
         )
+
+    def legajo_en_riesgo(self, legajo: Legajo, motivo: str, dias_restantes: int) -> None:
+        self.pendientes.append(Email(
+            get_settings().email_coordinacion,
+            f"Alerta de riesgo: {legajo.numero_legajo} ({legajo.apellido}, {legajo.nombre})",
+            "El semáforo de este legajo pasó a ROJO en el recálculo automático:\n\n"
+            f"- Legajo: {legajo.numero_legajo}\n"
+            f"- Estudiante: {legajo.apellido}, {legajo.nombre}\n"
+            f"- Motivo: {motivo}\n"
+            f"- Días restantes hasta el plazo normativo: {dias_restantes}\n\n"
+            "Revisá el listado de estudiantes en riesgo de la coordinación." + FIRMA,
+        ))
 
     def reservas_vencidas(self, legajos: list[Legajo]) -> None:
         if not legajos:
