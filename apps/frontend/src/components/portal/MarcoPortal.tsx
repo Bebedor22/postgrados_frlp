@@ -1,9 +1,10 @@
 /**
  * Marco (barra superior + menú lateral) de los portales Docente y Alumno.
  *
- * Estas pantallas son del Módulo B y del portal del alumno: muestran datos de
- * ejemplo y todavía no están conectadas al backend. Están armadas con etiquetas
- * HTML (div, header, nav), así que funcionan en la versión web.
+ * Los portales Docente y del Alumno (Módulo B) ya consumen la API con la sesión
+ * del docente y el token del trámite del alumno, respectivamente. La planilla de
+ * asistencia sigue mostrando datos de ejemplo (fuera del alcance mínimo del módulo).
+ * Están armados con etiquetas HTML (div, header, nav), así que funcionan en la versión web.
  *
  * Antes este marco estaba copiado en app/marco.tsx y app/docente/components/navLeft.tsx.
  * Expo Router trata cada archivo de app/ como una pantalla, así que esas copias

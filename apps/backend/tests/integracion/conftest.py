@@ -39,13 +39,34 @@ async def _crear_base_si_no_existe(url: str) -> None:
         await conexion.close()
 
 
+async def _vaciar_legajos(url: str) -> None:
+    """Vacía los legajos al terminar la sesión para que la próxima corrida pueda migrar.
+
+    El `downgrade(base)` de la sesión siguiente vuelve a crear la restricción única
+    de email (existía hasta la migración 0004): si quedan legajos con el mismo email
+    —por ejemplo los que crea el último test—, esa migración falla.
+    """
+    partes = urlsplit(url.replace("+asyncpg", ""))
+    conexion = await asyncpg.connect(
+        user=partes.username, password=partes.password, host=partes.hostname,
+        port=partes.port or 5432, database=partes.path.lstrip("/"),
+    )
+    try:
+        await conexion.execute("TRUNCATE legajos, cohortes, carreras RESTART IDENTITY CASCADE")
+    finally:
+        await conexion.close()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def base_de_datos():
     """Base de test migrada desde cero (prueba también el downgrade de todas las migraciones)."""
-    asyncio.run(_crear_base_si_no_existe(get_settings().database_url))
+    url = get_settings().database_url
+    asyncio.run(_crear_base_si_no_existe(url))
     alembic = Config("alembic.ini")
     command.downgrade(alembic, "base")
     command.upgrade(alembic, "head")
+    yield
+    asyncio.run(_vaciar_legajos(url))
 
 
 @pytest.fixture(scope="session", autouse=True)

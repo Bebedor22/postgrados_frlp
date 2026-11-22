@@ -274,3 +274,80 @@ export function accionLegajo(id: string, accion: AccionLegajo, texto?: string) {
         true,
     );
 }
+
+// ── Módulo B: seminarios, cursada y notas finales ───────────────────────────
+
+export interface Seminario {
+    id: string;
+    carrera_id: string;
+    nombre: string;
+    codigo: string;
+    horas_catedra: number;
+    es_obligatorio: boolean;
+    docente_email: string | null;
+    fecha_limite_actas: string | null;
+    actualizado_en: string | null;
+}
+
+export interface EstudianteSeminario {
+    legajo_id: string;
+    numero_legajo: string;
+    apellido: string;
+    nombre: string;
+    email: string;
+    nota_final: number | null;
+    estado: "CURSANDO" | "APROBADO" | "DESAPROBADO";
+}
+
+export interface ProgresoSeminarios {
+    obligatorios_total: number;
+    aprobados: number;
+    adeudados: number;
+}
+
+export interface NotaFinal {
+    legajo_id: string;
+    nota: number;
+}
+
+export interface FiltrosSeminarios {
+    carrera_id?: string;
+    solo_obligatorios?: boolean;
+    docente_email?: string;
+}
+
+/** Un DOCENTE siempre recibe solo sus seminarios, aunque pida otro `docente_email`. */
+export const listarSeminarios = (filtros: FiltrosSeminarios = {}) =>
+    pedir<Seminario[]>(`/seminarios/${aQuery({...filtros})}`, {}, true);
+
+export interface SeminarioCrear {
+    carrera_id: string;
+    nombre: string;
+    codigo: string;
+    horas_catedra: number;
+    es_obligatorio?: boolean;
+    docente_email?: string | null;
+    fecha_limite_actas?: string | null;
+}
+
+export const crearSeminario = (datos: SeminarioCrear) =>
+    pedir<Seminario>("/seminarios/", {method: "POST", body: JSON.stringify(datos)}, true);
+
+export const obtenerSeminario = (id: string) => pedir<Seminario>(`/seminarios/${id}`, {}, true);
+
+export const listarInscriptosSeminario = (id: string) =>
+    pedir<EstudianteSeminario[]>(`/seminarios/${id}/estudiantes`, {}, true);
+
+export const inscribirEnSeminario = (id: string, legajoId: string) =>
+    pedir<{id: string; legajo_id: string; seminario_id: string; nota_final: number | null; estado: string}>(
+        `/seminarios/${id}/estudiantes`, {method: "POST", body: JSON.stringify({legajo_id: legajoId})}, true,
+    );
+
+/** Nota >= 4 aprueba el seminario (BR-003). Si alguna falla, no se guarda ninguna. */
+export const registrarNotasSeminario = (id: string, notas: NotaFinal[]) =>
+    pedir<{id: string; legajo_id: string; nota_final: number | null; estado: string}[]>(
+        `/seminarios/${id}/notas`, {method: "PATCH", body: JSON.stringify({notas})}, true,
+    );
+
+export const progresoSeminarios = (legajoId: string) =>
+    pedir<ProgresoSeminarios>(`/seminarios/progreso?legajo_id=${encodeURIComponent(legajoId)}`, {}, true);

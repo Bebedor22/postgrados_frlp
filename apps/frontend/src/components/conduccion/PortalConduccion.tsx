@@ -13,6 +13,7 @@ export const ROLES_CONDUCCION = ["COORDINADOR", "DIRECCION"];
 
 const MENU = [
     {texto: "Inscriptos y legajos", ruta: "/conduccion", icono: "📋"},
+    {texto: "Seminarios", ruta: "/conduccion/seminarios", icono: "🕮"},
 ];
 
 /** Devuelve el usuario logueado; si no hay sesión o no tiene un rol de conducción, manda al login. */
@@ -66,7 +67,7 @@ export function PortalConduccion({usuario, titulo, accion, children}: {
                 {!compacto ? (
                     <View style={estilos.menu}>
                         <Text style={estilos.menuTitulo}>Portal de Conducción</Text>
-                        <Text style={estilos.menuGrupo}>GESTIÓN DE INSCRIPCIONES</Text>
+                        <Text style={estilos.menuGrupo}>GESTIÓN ACADÉMICA</Text>
                         {MENU.map((item) => {
                             const activo = ruta === item.ruta || (item.ruta !== "/" && ruta.startsWith(`${item.ruta}/`));
                             return (

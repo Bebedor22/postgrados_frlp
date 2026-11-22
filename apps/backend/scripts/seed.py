@@ -12,7 +12,9 @@ Crea:
 - 3 carreras (una de cada tipo);
 - 2 cohortes: 2026 (inscripción cerrada) y 2027 (inscripción abierta);
 - 16 aspirantes ficticios en la Cohorte 2027, repartidos en todos los estados del workflow,
-  con sus documentos PDF de ejemplo (los que ya enviaron la inscripción).
+  con sus documentos PDF de ejemplo (los que ya enviaron la inscripción);
+- los seminarios de cada carrera (Módulo B), con inscripciones y notas de los
+  estudiantes avanzados.
 
 Usa los mismos casos de uso que la API, así los datos respetan todas las reglas
 del dominio. Se puede correr más de una vez: lo que ya existe no se duplica.
@@ -23,6 +25,12 @@ import sys
 from datetime import date
 
 from src.autenticacion.application.registrar_usuario import UsuarioYaExiste, registrar_usuario
+from src.carga_academica.application.gestionar_seminarios import (
+    crear_seminario,
+    inscribir_estudiante,
+    registrar_nota_final,
+)
+from src.carga_academica.infrastructure.pg_repository import PostgresSeminarioRepository
 from src.gestion_documental.application.gestionar_documentos import subir_documento
 from src.gestion_documental.domain.entities import documentos_faltantes
 from src.gestion_documental.infrastructure.file_storage import AlmacenamientoLocal
@@ -53,12 +61,29 @@ from src.shared.database.connection import AsyncSessionLocal, engine
 from scripts.crear_usuarios_iniciales import USUARIOS_DE_PRUEBA
 
 COORDINADOR = "admin@fenix.test"
+DOCENTE = "docente@fenix.test"
 
 CARRERAS = [
     ("Maestría en Ingeniería en Sistemas de Información", "Maestria", 2),
     ("Especialización en Ingeniería Gerencial", "Especializacion", 1),
     ("Doctorado en Ingeniería", "Doctorado", 4),
 ]
+
+# Seminarios por carrera (Módulo B). Los obligatorios alimentan el semáforo de riesgo:
+# sin todos aprobados, el legajo no puede graduarse.
+# (índice de carrera, nombre, código, horas cátedra, ¿obligatorio?)
+SEMINARIOS = [
+    (0, "Metodología de la Investigación", "MET-001", 32, True),
+    (0, "Gestión de Proyectos de Software", "GPS-001", 32, True),
+    (0, "Seguridad en Sistemas de Información", "SEG-001", 32, False),
+    (1, "Gerencia de Proyectos", "GPR-001", 32, True),
+    (1, "Finanzas para Gerentes", "FIN-001", 24, False),
+    (2, "Seminario de Investigación Avanzada", "INV-001", 48, True),
+    (2, "Ética en la Investigación Científica", "ETI-001", 16, True),
+]
+
+# Nota final de los legajos que ya cerraron la cursada (los demás quedan CURSANDO)
+NOTAS_FINALES = {"Fernández": 9.0, "Benítez": 8.5}
 
 # (apellido, nombre, DNI, índice de carrera, estado final, ¿beca?)
 ASPIRANTES = [
@@ -240,6 +265,56 @@ async def crear_aspirante(datos: tuple, ids_carreras: list[str], cohorte_id: str
         return apellido, token
 
 
+async def crear_seminarios(ids_carreras: list[str]) -> None:
+    """Crea los seminarios de cada carrera (Módulo B). Se puede correr más de una vez."""
+    async with AsyncSessionLocal() as session:
+        repo = PostgresSeminarioRepository(session)
+        existentes = {s.codigo for s in await repo.listar()}
+        for i_carrera, nombre, codigo, horas, obligatorio in SEMINARIOS:
+            if codigo in existentes:
+                print(f"  • {codigo} ya existía")
+                continue
+            await crear_seminario(
+                ids_carreras[i_carrera], nombre, codigo, horas, repo,
+                es_obligatorio=obligatorio, docente_email=DOCENTE,
+            )
+            print(f"  ✔ {codigo} · {nombre} ({'obligatorio' if obligatorio else 'optativo'})")
+        await session.commit()
+
+
+async def cargar_carga_academica(cohorte_id: str) -> None:
+    """Inscribe a los estudiantes avanzados en los seminarios obligatorios y carga sus notas.
+
+    Los que ya terminaron la cursada quedan APROBADOS (nota >= 4); los activos siguen
+    CURSANDO. Es lo que alimenta el progreso del alumno y el semáforo de riesgo.
+    """
+    async with AsyncSessionLocal() as session:
+        repo_seminarios = PostgresSeminarioRepository(session)
+        repo_legajos = PostgresLegajoRepository(session)
+        seminarios = await repo_seminarios.listar()
+
+        for estado in (EstadoLegajo.ACTIVO, EstadoLegajo.COMPLETADO):
+            legajos, _ = await repo_legajos.buscar(
+                FiltrosLegajos(cohorte_id=cohorte_id, estado=estado, por_pagina=100)
+            )
+            for legajo in legajos:
+                obligatorios = [
+                    s for s in seminarios
+                    if s.carrera_id == legajo.carrera_id and s.es_obligatorio
+                ]
+                for seminario in obligatorios:
+                    inscriptos = await repo_seminarios.listar_inscritos(seminario.id)
+                    if any(f.legajo_id == legajo.id for f in inscriptos):
+                        continue
+                    await inscribir_estudiante(legajo.id, seminario.id, repo_seminarios)
+                    nota = NOTAS_FINALES.get(legajo.apellido)
+                    if nota is not None:
+                        await registrar_nota_final(legajo.id, seminario.id, nota, repo_seminarios)
+                    detalle = f"nota {nota}" if nota is not None else "cursando"
+                    print(f"  ✔ {legajo.apellido} → {seminario.codigo} ({detalle})")
+        await session.commit()
+
+
 async def hay_datos() -> bool:
     async with AsyncSessionLocal() as session:
         return bool(await PostgresCohorteRepository(session).listar())
@@ -261,27 +336,33 @@ async def main() -> None:
     print("\n▶ Carreras y cohortes")
     ids_carreras, cohorte_id = await crear_oferta()
 
+    print("\n▶ Seminarios (Módulo B)")
+    await crear_seminarios(ids_carreras)
+
     print("\n▶ Aspirantes")
     async with AsyncSessionLocal() as session:
         _, cantidad = await PostgresLegajoRepository(session).buscar(FiltrosLegajos(cohorte_id=cohorte_id, por_pagina=1))
+    links = {}
     if cantidad > 0:
         print(f"  • La Cohorte 2027 ya tiene {cantidad} legajos: no se cargan aspirantes de demo")
-        await engine.dispose()
-        return
+    else:
+        for datos in ASPIRANTES:
+            apellido, token = await crear_aspirante(datos, ids_carreras, cohorte_id)
+            links[apellido] = token
+            print(f"  ✔ {apellido}, {datos[1]} → {datos[4].replace('_AVANZADO', '')}")
 
-    links = {}
-    for datos in ASPIRANTES:
-        apellido, token = await crear_aspirante(datos, ids_carreras, cohorte_id)
-        links[apellido] = token
-        print(f"  ✔ {apellido}, {datos[1]} → {datos[4].replace('_AVANZADO', '')}")
+    print("\n▶ Carga académica (inscripciones y notas)")
+    await cargar_carga_academica(cohorte_id)
     await engine.dispose()
 
     url = get_settings().frontend_url
     print("\n▶ Listo. Para la demo:")
     print("  Coordinación: admin@fenix.test / Admin1234!   (http://localhost:8081/login)")
     print("  Dirección:    direccion@fenix.test / Direccion1234!")
-    print(f"  Trámite observado (Ríos):        {url}/tramite/{links['Ríos']}")
-    print(f"  Trámite a medio completar (Torres): {url}/tramite/{links['Torres']}\n")
+    if links:
+        print(f"  Trámite observado (Ríos):        {url}/tramite/{links['Ríos']}")
+        print(f"  Trámite a medio completar (Torres): {url}/tramite/{links['Torres']}")
+    print()
 
 
 if __name__ == "__main__":

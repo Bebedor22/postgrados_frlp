@@ -128,12 +128,14 @@ async def test_vencimiento_de_reservas(cliente, cabeceras, inscribir, emails):
     for legajo_id in (viejo, nuevo):
         await accion(cliente, cabeceras, legajo_id, "revisar")
         await accion(cliente, cabeceras, legajo_id, "aprobar")
-    # Se "envejece" la aprobación del primero: 31 días
+    # Se "envejece" la aprobación del primero: 31 días. La fecha la calcula Python
+    # (no `now()` de la BD) para que el test no dependa de la zona horaria de cada
+    # máquina: el caso de uso compara contra `date.today()` de Python.
     async with engine.begin() as conexion:
         await conexion.execute(
-            text("UPDATE auditoria_legajos SET created_at = now() - interval '31 days' "
+            text("UPDATE auditoria_legajos SET created_at = :fecha "
                  "WHERE legajo_id = :id AND estado_nuevo = 'COMPLETADO'"),
-            {"id": viejo},
+            {"id": viejo, "fecha": datetime.now() - timedelta(days=31)},
         )
     r = await cliente.post("/legajos/vencer-reservas", headers=cabeceras["COORDINADOR"])
     assert r.json()["cantidad"] == 1 and r.json()["legajos"][0]["legajo_id"] == viejo
