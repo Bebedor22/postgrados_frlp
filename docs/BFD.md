@@ -190,10 +190,13 @@ flowchart TB
 
 **Regla de Negocio Crítica (para el ASR):**
 ```
-Si (Fecha_Actual - Fecha_Inscripción) > (Duración_Carrera * 0.75) 
-   Y (Seminarios_Aprobados < Total_Seminarios_Obligatorios * 0.8) 
+Si (Fecha_Actual - Fecha_Inscripción) > (Duración_Carrera * Umbral_Rojo)
+   Y (Seminarios_Aprobados < Total_Seminarios_Obligatorios)
 Entonces Estado = ROJO
 ```
+`Umbral_Rojo` = 0.75 para Especialización, 0.80 para Maestría, 0.70 para Doctorado (sin fecha CPR).
+La fórmula anterior usaba el factor 0.8 sobre los seminarios; se alinea con `SRS.md` RF-GRAD-002
+("adeuda ≥1 seminario"). Ver `docs/adr/ADR-006-modulo-c-decisiones.md`.
 
 ---
 

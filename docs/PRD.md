@@ -198,14 +198,16 @@ Entonces [resultado esperado]
 
 | Tipo Carrera | Duración | Umbral Amarillo | Umbral Rojo |
 |--------------|----------|-----------------|-------------|
-| Especialización | 2 años (730 días) | 50% tiempo transcurrido + TFI no iniciado | 75% tiempo + adeuda >1 seminario |
+| Especialización | 2 años (730 días) | 50% tiempo transcurrido + TFI no iniciado | 75% tiempo + adeuda ≥1 seminario * |
 | Maestría | 3 años (1095 días) | 50% tiempo + Tesis sin director asignado | 80% tiempo + adeuda seminarios |
 | Doctorado | 5 años (1825 días) | 40% tiempo + sin avance de tesis registrado | 70% tiempo + sin fecha CPR |
 
 **Criterios de Aceptación:**
 1. **Dado** un estudiante de Especialización inscripto hace 400 días, **cuando** no tiene TFI registrado, **entonces** su indicador es 🟡 Amarillo.
 2. **Dado** el mismo estudiante a los 550 días, **cuando** aún no aprobó el seminario obligatorio "Metodología", **entonces** cambia a 🔴 Rojo y aparece en dashboard de alertas.
-3. **Dado** un estado Rojo, **cuando** el estudiante aprueba el seminario pendiente, **entonces** vuelve a 🟡 Amarillo (nunca verde automáticamente, solo manual por coordinador).
+3. **Dado** un estado Rojo, **cuando** el estudiante aprueba el seminario pendiente, **entonces** vuelve a 🟡 Amarillo (no vuelve a Verde automáticamente por esa sola acción: el Verde requiere estar dentro de los plazos o la asignación manual del coordinador, BR-008).
+
+\* Ajustado a `SRS.md` RF-GRAD-002, fuente de verdad: "adeuda ≥1 seminario". La versión anterior de este documento decía ">1". Ver `docs/adr/ADR-006-modulo-c-decisiones.md`.
 
 ---
 

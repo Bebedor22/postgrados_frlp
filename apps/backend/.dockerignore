@@ -1,0 +1,10 @@
+# Lo que no se copia dentro de la imagen
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+.env
+storage/

@@ -1,109 +1,73 @@
+"""Dependencias de FastAPI para autenticación y autorización por rol.
+
+Uso en un endpoint (ARQUITECTURA.md §7.3):
+    @router.get("/legajos", dependencies=[Depends(require_role("COORDINADOR"))])
+"""
+from typing import Any, Dict, Optional
+
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from src.shared.auth.jwt import decodificar_token, token_a_rol
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+from src.shared.auth.jwt import decodificar_token
 
 security = HTTPBearer(auto_error=False)
+
+
+def _error_401(mensaje: str) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=mensaje,
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 async def get_current_user(
         credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> Optional[Dict[str, Any]]:
-    """Obtener usuario actual desde JWT. Retorna None para endpoints públicos."""
+    """Usuario actual desde el JWT, o None si no se envió token (endpoints públicos)."""
     if credentials is None:
         return None
     try:
-        payload = decodificar_token(credentials.credentials)
-        return payload
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token inválido",
-        )
+        return decodificar_token(credentials.credentials)
+    except ValueError as error:
+        raise _error_401(str(error))
 
 
-# Dependencias de rol específicas (síncronas para evitar problemas con FastAPI)
-def require_role_coordinador():
-    """Dependency: solo COORDINADOR puede acceder."""
+async def get_usuario_autenticado(
+        usuario: Optional[Dict[str, Any]] = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """Igual que get_current_user, pero exige que haya token."""
+    if usuario is None:
+        raise _error_401("Credenciales requeridas")
+    return usuario
 
-    async def dependency(
-            credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    ):
-        if credentials is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Credenciales requeridas",
-            )
-        payload = decodificar_token(credentials.credentials)
-        if payload.get("rol") != "COORDINADOR":
+
+def require_role(*roles: str):
+    """Dependency que exige un token válido con alguno de los roles indicados."""
+
+    async def dependency(usuario: Dict[str, Any] = Depends(get_usuario_autenticado)) -> Dict[str, Any]:
+        if usuario.get("rol") not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Rol requerido: COORDINADOR. Tu rol: {payload.get('rol')}",
+                detail=f"Rol requerido: {' o '.join(roles)}. Tu rol: {usuario.get('rol')}",
             )
-        return payload
+        return usuario
 
     return dependency
+
+
+# Atajos por rol (se mantienen por compatibilidad con los routers existentes)
+def require_role_coordinador():
+    return require_role("COORDINADOR")
 
 
 def require_role_docente():
-    """Dependency: solo DOCENTE puede acceder."""
-
-    async def dependency(
-            credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    ):
-        if credentials is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Credenciales requeridas",
-            )
-        payload = decodificar_token(credentials.credentials)
-        if payload.get("rol") != "DOCENTE":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Rol requerido: DOCENTE. Tu rol: {payload.get('rol')}",
-            )
-        return payload
-
-    return dependency
+    return require_role("DOCENTE")
 
 
 def require_role_cpr():
-    """Dependency: solo CPR puede acceder."""
-
-    async def dependency(
-            credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    ):
-        if credentials is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Credenciales requeridas",
-            )
-        payload = decodificar_token(credentials.credentials)
-        if payload.get("rol") != "CPR":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Rol requerido: CPR. Tu rol: {payload.get('rol')}",
-            )
-        return payload
-
-    return dependency
+    return require_role("CPR")
 
 
 def require_role_aspirante():
-    """Dependency: solo ASPIRANTE puede acceder."""
-
-    async def dependency(
-            credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    ):
-        if credentials is None:
-            # Para el formulario público de inscripción, retornamos None
-            # Esto permite que el endpoint /sea público
-            return None
-        payload = decodificar_token(credentials.credentials)
-        if payload.get("rol") != "ASPIRANTE":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Rol requerido: ASPIRANTE. Tu rol: {payload.get('rol')}",
-            )
-        return payload
-
-    return dependency
+    return require_role("ASPIRANTE")

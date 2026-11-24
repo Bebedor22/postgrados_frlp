@@ -1,0 +1,6 @@
+# Lo que no se copia dentro de la imagen (se instala o se genera adentro)
+node_modules/
+.expo/
+dist/
+web-build/
+npm-debug.*

@@ -1,0 +1,13 @@
+{
+  "name": "posgrado-e2e",
+  "private": true,
+  "description": "Pruebas de punta a punta (E2E) del Core: el flujo principal por pantalla, con Playwright",
+  "scripts": {
+    "test": "playwright test",
+    "test:ver": "playwright test --headed",
+    "informe": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

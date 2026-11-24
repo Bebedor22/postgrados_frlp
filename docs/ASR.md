@@ -74,11 +74,15 @@ calcularSemaforo(legajo: Legajo): 'VERDE' | 'AMARILLO' | 'ROJO'
   duracion = duracionNormativaEnDias(legajo.tipoCarrera)
   porcentajeTiempo = diasTranscurridos / duracion
   
-  si legajo.semaforo_manual: retornar legajo.semaforo  // Sobreescritura manual
-  si esRojo(legajo, porcentajeTiempo): retornar ROJO
-  si esAmarillo(legajo, porcentajeTiempo): retornar AMARILLO
-  retornar VERDE
+   si esRojo(legajo, porcentajeTiempo): retornar ROJO
+   si esAmarillo(legajo, porcentajeTiempo): retornar AMARILLO
+   retornar VERDE
 ```
+
+**Sobreescritura manual (BR-008):** la función pura solo calcula el color normativo. La prioridad de
+`semaforo_manual=true` se aplica en la capa de persistencia (`guardar_semaforo`), que no actualiza el
+color de un legajo forzado a Verde. El front muestra siempre el valor **almacenado**, nunca un cálculo
+local; el coordinador puede restaurar el cálculo automático (ver ADR-006).
 
 **Restricción:** El cálculo no puede estar en stored procedures de la BD (dificulta el testing). Debe estar en la capa de dominio (testeable unitariamente).
 

@@ -1,219 +1,128 @@
-import {Link, useRouter} from "expo-router";
-import {useState} from "react";
-import {Pressable, StyleSheet, Text, View} from "react-native";
-import {scheduleTestNotification} from "../src/lib/notifications";
-import {Marco} from './components/navLeft.tsx';
+/**
+ * Portal Docente (Módulo B): seminarios asignados al docente.
+ *
+ * Los datos salen de la API: el backend filtra los seminarios por el email del
+ * docente logueado. La planilla de asistencia completa queda fuera del alcance
+ * mínimo del módulo; acá solo se gestiona la nota final de cada estudiante.
+ */
+import {useRouter} from "expo-router";
+import {type CSSProperties, useEffect, useState} from "react";
+import {EncabezadoPagina, MarcoDocente} from "../../src/components/portal/MarcoPortal";
+import {
+    ApiError, Carrera, EstudianteSeminario, Seminario,
+    listarCarreras, listarInscriptosSeminario, listarSeminarios,
+} from "../../src/lib/api";
+import {obtenerSesion} from "../../src/lib/sesion";
 
-
-const cursosActivos = [
-    {
-        id: 1,
-        nombre: "Seminario de Investigación Cuantitativa",
-        cohorte: "2024",
-        cuatrimestre: "1° Cuatr. 2025",
-        estudiantes: 18,
-        estado: "Activo",
-    },
-];
-
-const otrosCursos = [
-    {
-        id: 2,
-        nombre: "Metodología de la Investigación",
-        cohorte: "2024",
-        cuatrimestre: "2° Cuatr. 2024",
-        estudiantes: 22,
-        estado: "Finalizado",
-    },
-    {
-        id: 3,
-        nombre: "Seminario de Tesis I",
-        cohorte: "2023",
-        cuatrimestre: "1° Cuatr. 2024",
-        estudiantes: 15,
-        estado: "Finalizado",
-    },
-    {
-        id: 4,
-        nombre: "Seminario de Investigación Cualitativa",
-        cohorte: "2025",
-        cuatrimestre: "2° Cuatr. 2025",
-        estudiantes: null,
-        estado: "Próximo",
-    },
-];
-
-function EstadoBadge({estado}: { estado: string }) {
-    const map: Record<string, string> = {
-        Activo: "#16a34a",
-        Finalizado: "#6b7280",
-        Próximo: "#2563eb",
-    };
-    return (
-        <span style={{color: map[estado] ?? "#374151", fontSize: "12px", fontWeight: 500}}>
-      {estado}
-    </span>
-    );
-}
+const BOTON_PRINCIPAL: CSSProperties = {
+    display: "flex", alignItems: "center", gap: "4px", padding: "9px 18px",
+    backgroundColor: "#0d2035", color: "white", border: "none", borderRadius: "6px",
+    fontSize: "13px", fontWeight: 500, cursor: "pointer",
+};
 
 export default function MisCursosScreen() {
     const router = useRouter();
+    const sesion = obtenerSesion();
+    const [seminarios, setSeminarios] = useState<Seminario[] | null>(null);
+    const [carreras, setCarreras] = useState<Carrera[]>([]);
+    const [inscriptos, setInscriptos] = useState<Record<string, EstudianteSeminario[]>>({});
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!sesion || sesion.usuario.rol !== "DOCENTE") {
+            router.replace("/login");
+            return;
+        }
+        function falló(e: unknown) {
+            const err = e as ApiError;
+            if (err.status === 401) router.replace("/login");
+            else setError(err.message);
+        }
+        Promise.all([listarSeminarios(), listarCarreras()])
+            .then(async ([lista, carreras]) => {
+                setSeminarios(lista);
+                setCarreras(carreras);
+                const filas = await Promise.all(lista.map((s) => listarInscriptosSeminario(s.id)));
+                setInscriptos(Object.fromEntries(lista.map((s, i) => [s.id, filas[i]])));
+            })
+            .catch(falló);
+    }, []);
+
+    const nombreCarrera = (id: string) => carreras.find((c) => c.id === id)?.nombre ?? "Carrera";
+
     return (
-        <Marco>
+        <MarcoDocente>
+            <EncabezadoPagina titulo="Mis cursos"/>
             <div style={{padding: "24px", maxWidth: "900px"}}>
-                <div style={{display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px"}}>
-                    <div style={{width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#22c55e"}}/>
-                    <span style={{fontSize: "13px", fontWeight: 500, color: "#374151"}}>Cursos en curso</span>
-                </div>
-
-                {cursosActivos.map((curso) => (
-                    <div
-                        key={curso.id}
-                        style={{
-                            backgroundColor: "white",
-                            border: "1px solid #e5e7eb",
-                            borderRadius: "8px",
-                            padding: "16px 20px",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "16px",
-                            marginBottom: "16px",
-                            boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                        }}
-                    >
-                        <div
-                            style={{
-                                width: "44px",
-                                height: "44px",
-                                color: "#FFF",
-                                fontSize: "1.6em",
-                                backgroundColor: "#0d2035",
-                                borderRadius: "10px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                flexShrink: 0,
-                            }}
-                        >
-                            🕮
-                        </div>
-                        <div style={{flex: 1}}>
-                            <div style={{fontSize: "15px", fontWeight: 600, color: "#111", marginBottom: "4px"}}>
-                                {curso.nombre}
-                            </div>
-                            <div style={{display: "flex", gap: "16px", fontSize: "12px", color: "#6b7280"}}>
-                <span style={{display: "flex", alignItems: "center", gap: "4px"}}>
-                  📆 Cohorte {curso.cohorte} · {curso.cuatrimestre}
-                </span>
-                                <span style={{display: "flex", alignItems: "center", gap: "4px"}}>
-                  👥 {curso.estudiantes} estudiantes
-                </span>
-                                <EstadoBadge estado={curso.estado}/>
-                            </div>
-                        </div>
-                        <button
-                            onClick={() => navigate("/docente/planilla")}
-                            style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "4px",
-                                padding: "9px 18px",
-                                backgroundColor: "#0d2035",
-                                color: "white",
-                                border: "none",
-                                borderRadius: "6px",
-                                fontSize: "13px",
-                                fontWeight: 500,
-                                cursor: "pointer",
-                            }}
-                        >
-                            Gestionar {">"}
-                        </button>
+                {error ? (
+                    <div style={{
+                        backgroundColor: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca",
+                        borderRadius: "6px", padding: "12px 16px", marginBottom: "16px", fontSize: "13px",
+                    }}>
+                        {error}
                     </div>
-                ))}
+                ) : null}
+                {seminarios === null && !error ? (
+                    <p style={{color: "#6b7280", fontSize: "13px"}}>Cargando seminarios…</p>
+                ) : null}
+                {seminarios?.length === 0 ? (
+                    <div style={{
+                        backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "8px",
+                        padding: "24px", fontSize: "14px", color: "#374151",
+                    }}>
+                        No tenés seminarios asignados. Conducción debe asignarte uno al crear el seminario.
+                    </div>
+                ) : null}
 
-                <h3 style={{
-                    fontSize: "13px",
-                    fontWeight: 500,
-                    color: "#374151",
-                    marginBottom: "12px",
-                    marginTop: "8px"
-                }}>
-                    Otros cursos
-                </h3>
-                <div
-                    style={{
-                        backgroundColor: "white",
-                        border: "1px solid #e5e7eb",
-                        borderRadius: "8px",
-                        overflow: "hidden",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                    }}
-                >
-                    {otrosCursos.map((curso, i) => (
+                {seminarios?.map((seminario) => {
+                    const lista = inscriptos[seminario.id] ?? [];
+                    const conNota = lista.filter((e) => e.nota_final !== null).length;
+                    return (
                         <div
-                            key={curso.id}
+                            key={seminario.id}
                             style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "16px",
-                                padding: "14px 20px",
-                                borderBottom: i < otrosCursos.length - 1 ? "1px solid #f3f4f6" : "none",
+                                backgroundColor: "white", border: "1px solid #e5e7eb", borderRadius: "8px",
+                                padding: "16px 20px", display: "flex", alignItems: "center", gap: "16px",
+                                marginBottom: "16px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
                             }}
                         >
-                            <div
-                                style={{
-                                    width: "36px",
-                                    height: "36px",
-                                    fontSize: "1.2em",
-                                    backgroundColor: "#f3f4f6",
-                                    borderRadius: "8px",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    flexShrink: 0,
-                                }}
-                            >
+                            <div style={{
+                                width: "44px", height: "44px", color: "#FFF", fontSize: "1.6em",
+                                backgroundColor: "#0d2035", borderRadius: "10px", display: "flex",
+                                alignItems: "center", justifyContent: "center", flexShrink: 0,
+                            }}>
                                 🕮
                             </div>
-                            <div style={{flex: 1}}>
-                                <div style={{fontSize: "14px", fontWeight: 500, color: "#111", marginBottom: "2px"}}>
-                                    {curso.nombre}
+                            <div style={{flex: 1, minWidth: 0}}>
+                                <div style={{fontSize: "15px", fontWeight: 600, color: "#111", marginBottom: "4px"}}>
+                                    {seminario.nombre}
                                 </div>
-                                <div style={{display: "flex", gap: "12px", fontSize: "11px", color: "#6b7280"}}>
-                  <span style={{display: "flex", alignItems: "center", gap: "3px"}}>
-                    📆 Cohorte {curso.cohorte} · {curso.cuatrimestre}
-                  </span>
-                                    {curso.estudiantes && (
-                                        <span style={{display: "flex", alignItems: "center", gap: "3px"}}>
-                      👥 {curso.estudiantes} estudiantes
-                    </span>
-                                    )}
-                                    <EstadoBadge estado={curso.estado}/>
+                                <div style={{display: "flex", gap: "16px", fontSize: "12px", color: "#6b7280", flexWrap: "wrap"}}>
+                                    <span>📘 {seminario.codigo}</span>
+                                    <span>🎓 {nombreCarrera(seminario.carrera_id)}</span>
+                                    <span>⏱ {seminario.horas_catedra} horas cátedra</span>
+                                    <span>👥 {lista.length} estudiantes</span>
+                                    <span style={{color: conNota === lista.length && lista.length > 0 ? "#16a34a" : "#d97706"}}>
+                                        ✎ {conNota}/{lista.length} notas cargadas
+                                    </span>
+                                    <span style={{
+                                        color: seminario.es_obligatorio ? "#1d6b59" : "#6b7280",
+                                        fontWeight: seminario.es_obligatorio ? 600 : 400,
+                                    }}>
+                                        {seminario.es_obligatorio ? "Obligatorio" : "Optativo"}
+                                    </span>
                                 </div>
                             </div>
-                            {curso.estado === "Finalizado" && (
-                                <button
-                                    style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "4px",
-                                        padding: "7px 14px",
-                                        backgroundColor: "white",
-                                        color: "#374151",
-                                        border: "1px solid #d1d5db",
-                                        borderRadius: "5px",
-                                        fontSize: "12px",
-                                        cursor: "pointer",
-                                    }}
-                                >
-                                    Ver actas {">"}
-                                </button>
-                            )}
+                            <button
+                                onClick={() => router.push(`/docente/seminario/${seminario.id}`)}
+                                style={BOTON_PRINCIPAL}
+                            >
+                                Gestionar {">"}
+                            </button>
                         </div>
-                    ))}
-                </div>
+                    );
+                })}
             </div>
-        </Marco>
+        </MarcoDocente>
     );
 }

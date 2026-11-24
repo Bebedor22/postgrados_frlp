@@ -15,6 +15,55 @@ Este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 - Estructura inicial del repositorio
 - Documentación base: SRS, PRD, BFD, Arquitectura, Cronograma
 
+### Módulo B — Carga Académica (alcance mínimo, implementado)
+- Seminarios por carrera (obligatorios u optativos), inscripción de legajos y carga de notas finales con BR-003 (`nota >= 4` aprueba)
+- Progreso de seminarios obligatorios por legajo y endpoint público `/inscripciones/{token}/avance` para el portal del alumno
+- Catálogo y alta de seminarios en conducción, cursos y notas en el portal docente, y "Mi Avance" conectado
+- Datos de demo: seminarios por carrera, inscripciones, notas y links de muestra en `scripts/seed.py`
+
+### Módulo C — Seguimiento de Graduación (implementado)
+- `calcular_semaforo()` como función pura con reglas por tipo de carrera (RF-GRAD-002) y `semaforo`/`semaforo_manual` persistidos
+- Registro y edición de TFI/Tesis (RF-GRAD-001, BR-004) con graduación automática al tener fecha CPR y no adeudar seminarios
+- Endpoints de semáforo por legajo, verde manual con restauración (BR-008), `/graduacion/semaforo`, `/graduacion/en-riesgo` (alias antiguo deprecated) y graduación manual
+- Alertas por email a la coordinación cuando un legajo pasa a ROJO (US-C-004) y exportación a Excel del listado en riesgo (US-C-003)
+- Búsqueda CPR de legajos para TFI sin exponer la bandeja completa; portal CPR con login, alta y edición de tesis
+- Dashboard de semáforo y pantalla "En riesgo" en conducción; panel de seguimiento en el detalle del legajo
+- Recálculo diario a las 2:00 y vencimiento de reservas a las 3:00 en el ciclo de tareas (ADR-006)
+- 162 tests del backend (90,65 % de cobertura, módulos B/C/D incluidos), 10 tests unitarios nuevos de límites/graduación/override y 6 de integración de la API de graduación
+- `docs/adr/ADR-006-modulo-c-decisiones.md`: decisiones y reconciliación de contradicciones documentales
+
+**Nota:** las decisiones de diseño de B y C están registradas en `docs/adr/ADR-006-modulo-c-decisiones.md`; el SRS y `ARQUITECTURA.md` son la fuente de verdad ante discrepancias con PRD/BFD.
+
+---
+
+## [v1.0.0-core] — Entrega final del Core (17/11/2026)
+
+Rama `feature/backend-core`. Detalle de decisiones en `docs/adr/ADR-005-decisiones-del-core.md`.
+
+### Added
+- Backend FastAPI con Clean Architecture, PostgreSQL 16 en Docker y migraciones con Alembic
+- Login con JWT y bcrypt, roles y usuarios de prueba
+- Carreras, cohortes y apertura/cierre de la inscripción (BR-009)
+- Inscripción por pasos con link de seguimiento y límite de 2 carreras por cohorte (BR-001)
+- Bandeja de la coordinación y workflow del legajo, con número de legajo definitivo al aprobar
+- Frontend conectado: wizard de inscripción, trámite del aspirante, login y portal de conducción
+- Script de datos de demo (`scripts/seed.py`) y guía rápida del Core (`onboarding/GUIA_RAPIDA_CORE.md`)
+- Documentos PDF del legajo: subida, reemplazo, descarga con permisos y verificación de integridad (RF-CORE-002)
+- Emails del trámite (MailHog en desarrollo) y vencimiento automático diario de reservas (BR-005)
+- Baja de legajos COMPLETADO o ACTIVO
+- Filtros por carrera y beca y exportación a Excel (RF-CORE-004)
+- Frontend en Docker: todo el sistema se levanta con `docker compose up -d --build`
+- 115 tests del backend (93 % de cobertura), E2E del flujo principal con Playwright y CI en GitHub Actions
+
+### Changed
+- Número de legajo con el formato del SRS: `AÑO-COHORTE-SECUENCIAL` (ej. `27-001-005`)
+- La motivación pide al menos 50 caracteres (REQ-CORE-001)
+- Los datos de demo se cargan solos con la base vacía
+
+### Fixed
+- La transacción se confirma antes de enviar la respuesta (antes podía leerse un dato todavía no guardado)
+- Pantallas de docente y alumno sin errores de TypeScript; se quitan restos de la plantilla (`expo-notifications`)
+
 ---
 
 ## [v0.1.0-alpha] — Sprint 0 (esperado 15/05/2026)

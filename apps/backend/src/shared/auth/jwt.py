@@ -2,11 +2,13 @@ import jwt
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 
-# Configuración JWT
-# En producción estos valores vendrían de variables de entorno
-JWT_SECRET_KEY = "cambiar-por-variables-entorno-jwt-secret-key-muy-largo"
-JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 480  # 8 horas
+from src.shared.config import get_settings
+
+# Configuración JWT: el secreto se lee de la variable de entorno JWT_SECRET
+_settings = get_settings()
+JWT_SECRET_KEY = _settings.jwt_secret
+JWT_ALGORITHM = _settings.jwt_algoritmo
+ACCESS_TOKEN_EXPIRE_MINUTES = _settings.jwt_expiracion_minutos
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 
@@ -42,7 +44,7 @@ def decodificar_token(
     try:
         payload = jwt.decode(token, secreto, algorithms=[JWT_ALGORITHM])
         return payload
-    except jwt.ExpiredError:
+    except jwt.ExpiredSignatureError:   # antes decía jwt.ExpiredError, que no existe
         raise ValueError("Token expirado")
     except jwt.InvalidTokenError:
         raise ValueError("Token inválido")
