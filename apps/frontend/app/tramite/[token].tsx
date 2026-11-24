@@ -84,15 +84,18 @@ export default function TramiteScreen() {
                         </Text>
                     </View>
 
-                    <View style={{marginTop: 4}}>
-                        <Link href="/alumno/miAvance" asChild>
-                            <Pressable>
-                                <Text style={{fontSize: 13, color: "#1d6b59", fontWeight: "600"}}>
-                                    Ver mi avance académico ›
-                                </Text>
-                            </Pressable>
-                        </Link>
-                    </View>
+                    {/* El avance académico existe recién cuando es estudiante (matriculado) */}
+                    {tramite.estado === "ACTIVO" || tramite.estado === "GRADUADO" ? (
+                        <View style={{marginTop: 4}}>
+                            <Link href="/alumno/miAvance" asChild>
+                                <Pressable>
+                                    <Text style={{fontSize: 13, color: "#1d6b59", fontWeight: "600"}}>
+                                        Ver mi avance académico ›
+                                    </Text>
+                                </Pressable>
+                            </Link>
+                        </View>
+                    ) : null}
 
                     {observacion ? (
                         <View style={[wizardStyles.section, {backgroundColor: "#fffbeb", borderWidth: 1, borderColor: "#f59e0b"}]}>
