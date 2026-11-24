@@ -7,8 +7,6 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Optional
 
-ESTADOS_BAJA = {"BAJA", "VENCIDO", "RECHAZADO"}
-
 
 @dataclass
 class LegajoMetrica:
@@ -22,6 +20,7 @@ class LegajoMetrica:
     semaforo: str
     fecha_inscripcion: Optional[date] = None
     fecha_graduacion: Optional[date] = None
+    fue_activo: bool = False  # Llegó a matricularse (pasó por ACTIVO en algún momento)
 
 
 @dataclass
@@ -77,7 +76,9 @@ def _promedio_dias_graduacion(legajos: list[LegajoMetrica]) -> Optional[float]:
 def _conteos(legajos: list[LegajoMetrica]) -> dict[str, int]:
     activos = sum(1 for l in legajos if l.estado == "ACTIVO")
     graduados = sum(1 for l in legajos if l.estado == "GRADUADO")
-    bajas = sum(1 for l in legajos if l.estado in ESTADOS_BAJA)
+    # Retención y desgranamiento se miden sobre quienes llegaron a ser estudiantes.
+    # Un rechazado, un vencido o una baja antes de matricularse nunca cursó.
+    bajas = sum(1 for l in legajos if l.estado == "BAJA" and l.fue_activo)
     matriculados = activos + graduados + bajas
     en_riesgo = sum(1 for l in legajos if l.estado == "ACTIVO" and l.semaforo == "ROJO")
     return {

@@ -96,7 +96,7 @@ def test_metricas_retencion_desgranamiento_y_promedio_de_graduacion():
         _legajo("ACTIVO", semaforo="ROJO"),
         _legajo("ACTIVO"),
         _legajo("GRADUADO", fecha_inscripcion=date(2024, 1, 1), fecha_graduacion=date(2026, 1, 1)),
-        _legajo("BAJA"),
+        _legajo("BAJA", fue_activo=True),
     ]
     dashboard = calcular_dashboard(legajos, [CohorteInfo(id="c1", nombre="2026-1", anio=2026)])
     cohorte = dashboard.cohortes[0]
@@ -106,6 +106,18 @@ def test_metricas_retencion_desgranamiento_y_promedio_de_graduacion():
     assert cohorte.desgranamiento_pct == 25.0
     assert cohorte.tiempo_promedio_graduacion_dias == 731.0
 
+def test_desgranamiento_cuenta_solo_a_quien_se_matriculo_y_despues_abandono():
+    legajos = [
+        _legajo("ACTIVO", fue_activo=True),
+        _legajo("BAJA", fue_activo=True),  # Cursó y abandonó: es desgranamiento
+        _legajo("BAJA"),                    # Baja antes de matricularse
+        _legajo("RECHAZADO"),
+        _legajo("VENCIDO"),
+    ]
+    dashboard = calcular_dashboard(legajos, [CohorteInfo(id="c1", nombre="2026-1", anio=2026)])
+    assert dashboard.bajas == 1
+    assert dashboard.retencion_pct == 50.0
+    assert dashboard.desgranamiento_pct == 50.0
 
 def test_metricas_incluyen_cohortes_sin_inscriptos():
     dashboard = calcular_dashboard([], [CohorteInfo(id="c1", nombre="2027-1", anio=2027)])

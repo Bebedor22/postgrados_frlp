@@ -35,3 +35,22 @@ async def test_exportar_dashboard_es_excel_con_filtros(cliente, cabeceras, ofert
     assert r.status_code == 200, r.text
     assert "spreadsheetml" in r.headers["content-type"]
     assert r.content[:2] == b"PK"
+
+
+async def test_rechazados_no_cuentan_como_desgranamiento(cliente, cabeceras, oferta, inscribir):
+    coord = cabeceras["COORDINADOR"]
+    await inscribir(dni="32000001", activo=True)
+    _t, abandona = await inscribir(dni="32000002", activo=True)
+    r = await cliente.post(f"/legajos/{abandona}/baja", json={"motivo": "Pidió la baja por mudanza"}, headers=coord)
+    assert r.status_code == 200, r.text
+    _t, rechazado = await inscribir(dni="32000003")
+    assert (await cliente.post(f"/legajos/{rechazado}/revisar", headers=coord)).status_code == 200
+    r = await cliente.post(
+        f"/legajos/{rechazado}/rechazar", json={"motivo": "No cumple con el título requerido"}, headers=coord
+    )
+    assert r.status_code == 200, r.text
+
+    datos = (await cliente.get("/analytics/dashboard", headers=coord)).json()
+    assert datos["bajas"] == 1                  # el rechazado no es una baja
+    assert datos["desgranamiento_pct"] == 50.0  # 1 abandono sobre 2 matriculados
+    assert datos["retencion_pct"] == 50.0
