@@ -39,7 +39,8 @@ from src.shared.database.connection import get_db
 router = APIRouter()
 
 puede_leer = require_role("COORDINADOR", "DIRECCION", "DOCENTE")
-puede_crear = require_role("COORDINADOR", "DIRECCION")
+puede_crear = require_role("COORDINADOR")
+puede_cargar_notas = require_role("DOCENTE", "COORDINADOR")
 
 
 def _seminario_response(seminario: Seminario) -> SeminarioResponse:
@@ -235,7 +236,7 @@ async def api_registrar_notas(
         seminario_id: str,
         datos: NotasFinales,
         db: AsyncSession = Depends(get_db, scope="function"),
-        usuario: dict = Depends(puede_leer),
+        usuario: dict = Depends(puede_cargar_notas),
 ):
     repo = PostgresSeminarioRepository(db)
     try:
