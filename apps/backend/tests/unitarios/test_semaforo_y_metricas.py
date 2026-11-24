@@ -126,3 +126,23 @@ def test_trabajo_final_valida_tipo_y_director():
     )
     assert trabajo.tipo == TipoTrabajoFinal.TFI
     assert not trabajo.aprobado_por_cpr()
+
+
+def test_excel_incluye_filtros_y_usuario_en_metadatos():
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    from src.analytics.infrastructure.exportador_excel import exportar_dashboard_a_excel
+
+    metricas = calcular_dashboard(
+        [_legajo("ACTIVO")], [CohorteInfo(id="c1", nombre="2026-1", anio=2026)]
+    )
+    libro = load_workbook(BytesIO(exportar_dashboard_a_excel(
+        metricas, filtros="Tipo de carrera: Maestria", usuario="coord@utn.test"
+    )))
+    assert libro.sheetnames == ["Resumen", "Cohortes", "Metadatos"]
+    valores = {fila[0].value: fila[1].value for fila in libro["Metadatos"].iter_rows(min_row=2)}
+    assert valores["Filtros aplicados"] == "Tipo de carrera: Maestria"
+    assert valores["Exportado por"] == "coord@utn.test"
+    assert libro["Cohortes"].auto_filter.ref is not None
