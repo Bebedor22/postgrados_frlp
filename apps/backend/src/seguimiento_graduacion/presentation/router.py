@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.carga_academica.infrastructure.pg_repository import PostgresSeminarioRepository
+from src.inscripcion.domain.entities import EstadoLegajo
 from src.inscripcion.domain.repo import FiltrosLegajos
 from src.inscripcion.infrastructure.email_notifier import NotificadorEmail
 from src.inscripcion.infrastructure.pg_repository import PostgresLegajoRepository
@@ -16,6 +17,7 @@ from src.shared.auth.dependencies import require_role
 from src.shared.database.connection import get_db
 
 from ..application.gestionar_trabajos_finales import (
+    exigir_legajo_activo,
     graduar_con_trabajo_final,
     registrar_trabajo_final,
     editar_trabajo_final,
@@ -97,7 +99,8 @@ def _error_dominio(exc: Exception) -> HTTPException:
     summary="Registrar TFI/Tesis (solo CPR)",
     description=(
         "BR-004: solo el rol CPR crea el trabajo final. Al aprobarlo con fecha CPR se gradúa "
-        "automáticamente si no adeuda seminarios. El legajo debe existir (404 si no)."
+        "automáticamente si no adeuda seminarios. El legajo debe existir (404 si no) y estar "
+        "ACTIVO (422 si está en otro estado)."
     ),
 )
 async def api_registrar_trabajo_final(
@@ -108,9 +111,10 @@ async def api_registrar_trabajo_final(
         notificador: NotificadorEmail = Depends(get_notificador),
 ):
     # LegajoNoEncontrado lo traduce el handler global en main.py (404)
-    await PostgresLegajoRepository(db).obtener_por_id(legajo_id)
+    legajo = await PostgresLegajoRepository(db).obtener_por_id(legajo_id)
     repo_trabajos = PostgresTrabajoFinalRepository(db)
     try:
+        exigir_legajo_activo(legajo.estado)  # PENDIENTE, RECHAZADO, etc. → 422
         trabajo = await registrar_trabajo_final(
             legajo_id=legajo_id,
             tipo=datos.tipo,
@@ -291,7 +295,7 @@ async def api_en_riesgo(
     summary="Buscar legajos para registrar un TFI/Tesis (solo CPR)",
     description=(
         "BR-004: el CPR necesita encontrar el legajo al que le carga la tesis. "
-        "Devuelve solo los datos mínimos, no la bandeja completa de inscripción."
+        "Devuelve solo legajos ACTIVOS y con los datos mínimos, no la bandeja completa."
     ),
 )
 async def api_legajos_para_tesis(
@@ -300,7 +304,7 @@ async def api_legajos_para_tesis(
         _usuario: dict = Depends(solo_cpr),
 ):
     legajos, _ = await PostgresLegajoRepository(db).buscar(
-        FiltrosLegajos(texto=buscar or None, por_pagina=100)
+        FiltrosLegajos(texto=buscar or None, estado=EstadoLegajo.ACTIVO, por_pagina=100)
     )
     carreras = {str(c.id): c.nombre for c in await PostgresCarreraRepository(db).listar()}
     repo_trabajos = PostgresTrabajoFinalRepository(db)

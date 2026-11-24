@@ -14,6 +14,10 @@ class ReglaTrabajoFinalViolada(Exception):
     """Datos del trabajo final inválidos."""
 
 
+class LegajoNoActivo(ReglaTrabajoFinalViolada):
+    """Se intentó registrar un trabajo final en un legajo que no está ACTIVO."""
+
+
 @dataclass
 class TrabajoFinal:
     id: str

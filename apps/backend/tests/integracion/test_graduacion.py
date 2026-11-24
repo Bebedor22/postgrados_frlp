@@ -189,3 +189,42 @@ async def test_busqueda_de_legajos_para_tesis(cliente, cabeceras, oferta, inscri
     assert any(f["legajo_id"] == legajo_id for f in r.json())
     assert "datos" not in r.json()[0]
     assert (await cliente.get("/tesis/legajos", headers=cabeceras["COORDINADOR"])).status_code == 403
+
+
+DATOS_TFI = {
+    "tipo": "TFI", "titulo": "Trabajo final de prueba",
+    "director_nombre": "Ana Vega", "director_email": "ana@frlp.utn.edu.ar",
+}
+
+
+async def test_tfi_se_rechaza_si_el_legajo_no_esta_activo(cliente, cabeceras, oferta, inscribir):
+    # PENDIENTE: inscripción confirmada, todavía sin revisar
+    _t, pendiente = await inscribir(dni="30000001")
+    r = await cliente.post(f"/legajos/{pendiente}/trabajo-final", json=DATOS_TFI, headers=cabeceras["CPR"])
+    assert r.status_code == 422, r.text
+    assert "ACTIVO" in r.json()["detail"]
+    assert (await cliente.get(f"/legajos/{pendiente}/trabajo-final", headers=cabeceras["CPR"])).status_code == 404
+
+    # RECHAZADO
+    _t, rechazado = await inscribir(dni="30000002")
+    assert (await cliente.post(f"/legajos/{rechazado}/revisar", headers=cabeceras["COORDINADOR"])).status_code == 200
+    r = await cliente.post(
+        f"/legajos/{rechazado}/rechazar", json={"motivo": "No cumple con el título requerido"},
+        headers=cabeceras["COORDINADOR"],
+    )
+    assert r.status_code == 200, r.text
+    r = await cliente.post(f"/legajos/{rechazado}/trabajo-final", json=DATOS_TFI, headers=cabeceras["CPR"])
+    assert r.status_code == 422, r.text
+    assert (await cliente.get(f"/legajos/{rechazado}/trabajo-final", headers=cabeceras["CPR"])).status_code == 404
+
+
+async def test_portal_cpr_lista_solo_legajos_activos(cliente, cabeceras, oferta, inscribir):
+    _t, pendiente = await inscribir(dni="30000001", apellido="Pendiente")
+    _t, activo = await legajo_activo(cliente, cabeceras, inscribir, dni="30000003", apellido="Activo")
+
+    r = await cliente.get("/tesis/legajos", headers=cabeceras["CPR"])
+    assert r.status_code == 200, r.text
+    ids = {f["legajo_id"] for f in r.json()}
+    assert activo in ids
+    assert pendiente not in ids
+    assert all(f["estado"] == "ACTIVO" for f in r.json())
