@@ -203,11 +203,10 @@ async def api_inscribir_estudiante(
         _usuario: dict = Depends(puede_crear),
 ):
     # LegajoNoEncontrado lo traduce el handler global en main.py (404)
-    await PostgresLegajoRepository(db).obtener_por_id(datos.legajo_id)
+    legajo = await PostgresLegajoRepository(db).obtener_por_id(datos.legajo_id)
     try:
-        inscripcion = await inscribir_estudiante(
-            datos.legajo_id, seminario_id, PostgresSeminarioRepository(db)
-        )
+        # No ACTIVO o de otra carrera → ReglaAcademicaViolada → 422
+        inscripcion = await inscribir_estudiante(legajo, seminario_id, PostgresSeminarioRepository(db))
     except (SeminarioNoEncontrado, ReglaAcademicaViolada) as exc:
         raise _error_dominio(exc)
     except IntegrityError:
