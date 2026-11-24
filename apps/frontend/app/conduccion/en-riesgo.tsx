@@ -17,6 +17,7 @@ import {isoAFecha} from "../../src/lib/formulario";
 export default function EnRiesgoConduccionScreen() {
     const router = useRouter();
     const usuario = useUsuarioConduccion();
+    const esCoordinador = usuario?.rol === "COORDINADOR";
     const [filas, setFilas] = useState<SemaforoFila[] | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [aviso, setAviso] = useState<string | null>(null);
@@ -106,12 +107,14 @@ export default function EnRiesgoConduccionScreen() {
                                 {fila.tiene_fecha_cpr ? " · con fecha CPR" : " · sin fecha CPR"}
                             </Text>
                         </View>
-                        <Boton
-                            texto={procesando === fila.legajo_id ? "…" : fila.semaforo_manual ? "Restaurar" : "Fijar VERDE"}
-                            tipo="secundario"
-                            deshabilitado={procesando === fila.legajo_id}
-                            alPresionar={() => marcarVerde(fila)}
-                        />
+                        {esCoordinador ? (
+                            <Boton
+                                texto={procesando === fila.legajo_id ? "…" : fila.semaforo_manual ? "Restaurar" : "Fijar VERDE"}
+                                tipo="secundario"
+                                deshabilitado={procesando === fila.legajo_id}
+                                alPresionar={() => marcarVerde(fila)}
+                            />
+                        ) : null}
                     </View>
                 </Tarjeta>
             ))}

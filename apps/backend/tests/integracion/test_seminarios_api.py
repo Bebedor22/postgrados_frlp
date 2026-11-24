@@ -34,6 +34,14 @@ async def test_ciclo_completo_de_un_seminario(cliente, cabeceras, oferta, inscri
     assert r.json()[0]["estado"] == "CURSANDO"
     assert r.json()[0]["nota_final"] is None
 
+    assert (
+        await cliente.patch(
+            f"/seminarios/{seminario['id']}/notas",
+            json={"notas": [{"legajo_id": legajo_id, "nota": 8.5}]},
+            headers=cabeceras["DIRECCION"],
+        )
+    ).status_code == 403
+
     r = await cliente.patch(
         f"/seminarios/{seminario['id']}/notas",
         json={"notas": [{"legajo_id": legajo_id, "nota": 8.5}]},
@@ -82,8 +90,11 @@ async def test_solo_conduccion_puede_crear_seminarios(cliente, cabeceras, oferta
         await cliente.post("/seminarios/", json=datos, headers=cabeceras["CPR"])
     ).status_code == 403
     assert (
+        await cliente.post("/seminarios/", json=datos, headers=cabeceras["DIRECCION"])
+    ).status_code == 403
+    assert (
         await cliente.post("/seminarios/", json={**datos, "codigo": "OPT-02"},
-                           headers=cabeceras["DIRECCION"])
+                           headers=cabeceras["COORDINADOR"])
     ).status_code == 201
 
 

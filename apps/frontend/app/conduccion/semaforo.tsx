@@ -20,6 +20,7 @@ type Filtro = "TODOS" | "ROJO" | "AMARILLO" | "VERDE";
 export default function SemáforoConduccionScreen() {
     const router = useRouter();
     const usuario = useUsuarioConduccion();
+    const esCoordinador = usuario?.rol === "COORDINADOR";
     const [filas, setFilas] = useState<SemaforoFila[] | null>(null);
     const [filtro, setFiltro] = useState<Filtro>("TODOS");
     const [error, setError] = useState<string | null>(null);
@@ -122,14 +123,16 @@ export default function SemáforoConduccionScreen() {
                             </Text>
                         </View>
                         <SemaforoBadge color={fila.semaforo}/>
-                        <Boton
-                            texto={procesando === fila.legajo_id
-                                ? "…"
-                                : fila.semaforo_manual ? "Restaurar cálculo" : "Fijar VERDE"}
-                            tipo="secundario"
-                            deshabilitado={procesando === fila.legajo_id}
-                            alPresionar={() => cambiarVerde(fila)}
-                        />
+                        {esCoordinador ? (
+                            <Boton
+                                texto={procesando === fila.legajo_id
+                                    ? "…"
+                                    : fila.semaforo_manual ? "Restaurar cálculo" : "Fijar VERDE"}
+                                tipo="secundario"
+                                deshabilitado={procesando === fila.legajo_id}
+                                alPresionar={() => cambiarVerde(fila)}
+                            />
+                        ) : null}
                     </View>
                     {fila.semaforo_manual ? (
                         <Text style={{fontSize: 11, color: "#92400e", marginTop: 6}}>
