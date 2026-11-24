@@ -9,8 +9,10 @@ class CohorteNoEncontrada(LookupError):
     pass
 
 
-async def dashboard(repo: MetricasRepository) -> MetricasDashboard:
-    return calcular_dashboard(await repo.cargar_legajos(), await repo.listar_cohortes())
+async def dashboard(repo: MetricasRepository, tipo_carrera: Optional[str] = None) -> MetricasDashboard:
+    """Métricas globales y por cohorte; `tipo_carrera` filtra (Especializacion/Maestria/Doctorado)."""
+    legajos = await repo.cargar_legajos(tipo_carrera=tipo_carrera)
+    return calcular_dashboard(legajos, await repo.listar_cohortes())
 
 
 async def metricas_por_cohorte(repo: MetricasRepository, cohorte_id: str) -> MetricasCohorte:
@@ -22,5 +24,7 @@ async def metricas_por_cohorte(repo: MetricasRepository, cohorte_id: str) -> Met
     return dashboard_completo.cohortes[0]
 
 
-async def dashboard_para_exportar(repo: MetricasRepository) -> MetricasDashboard:
-    return await dashboard(repo)
+async def dashboard_para_exportar(
+        repo: MetricasRepository, tipo_carrera: Optional[str] = None
+) -> MetricasDashboard:
+    return await dashboard(repo, tipo_carrera)

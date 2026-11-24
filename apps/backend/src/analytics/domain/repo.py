@@ -5,7 +5,9 @@ from .metricas import CohorteInfo, LegajoMetrica
 
 
 class MetricasRepository:
-    async def cargar_legajos(self, cohorte_id: Optional[str] = None) -> list[LegajoMetrica]:
+    async def cargar_legajos(
+            self, cohorte_id: Optional[str] = None, tipo_carrera: Optional[str] = None
+    ) -> list[LegajoMetrica]:
         raise NotImplementedError("Implementar en pg_repository.py")
 
     async def listar_cohortes(self) -> list[CohorteInfo]:

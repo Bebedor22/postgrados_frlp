@@ -492,3 +492,57 @@ export async function exportarEnRiesgo(): Promise<Blob> {
     }
     return respuesta.blob();
 }
+
+// ── Módulo D: analytics ──────────────────────────────────────────────────────
+
+export type TipoCarreraFiltro = Carrera["tipo"];
+
+export interface MetricasCohorte {
+    cohorte_id: string;
+    cohorte_nombre: string;
+    cohorte_anio: number;
+    inscriptos: number;
+    activos: number;
+    graduados: number;
+    bajas: number;
+    en_riesgo: number;
+    retencion_pct: number;
+    desgranamiento_pct: number;
+    tiempo_promedio_graduacion_dias: number | null;
+}
+
+export interface Dashboard {
+    total_inscriptos: number;
+    activos: number;
+    graduados: number;
+    bajas: number;
+    en_riesgo: number;
+    retencion_pct: number;
+    desgranamiento_pct: number;
+    tiempo_promedio_graduacion_dias: number | null;
+    por_estado: Record<string, number>;
+    por_tipo_carrera: Record<string, number>;
+    cohortes: MetricasCohorte[];
+}
+
+/** RF-REP-001: métricas globales y por cohorte; `tipo` filtra por tipo de carrera. */
+export const obtenerDashboard = (tipo?: TipoCarreraFiltro) =>
+    pedir<Dashboard>(`/analytics/dashboard${aQuery({tipo_carrera: tipo})}`, {}, true);
+
+/** RF-REP-002: descarga el dashboard en Excel (con los mismos filtros que la pantalla). */
+export async function exportarDashboard(tipo?: TipoCarreraFiltro): Promise<Blob> {
+    let respuesta: Response;
+    try {
+        respuesta = await fetch(`${API_URL}/analytics/exportar${aQuery({tipo_carrera: tipo})}`, {
+            headers: {Authorization: `Bearer ${obtenerTokenSesion() ?? ""}`},
+        });
+    } catch {
+        throw new ApiError(0, "No se pudo conectar con el servidor.");
+    }
+    if (!respuesta.ok) {
+        if (respuesta.status === 401) cerrarSesion();
+        const cuerpo = await respuesta.json().catch(() => null);
+        throw new ApiError(respuesta.status, mensajeDeError(cuerpo?.detail, respuesta.status));
+    }
+    return respuesta.blob();
+}

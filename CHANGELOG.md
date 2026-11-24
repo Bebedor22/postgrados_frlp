@@ -32,6 +32,11 @@ Este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 - 162 tests del backend (90,65 % de cobertura, módulos B/C/D incluidos), 10 tests unitarios nuevos de límites/graduación/override y 6 de integración de la API de graduación
 - `docs/adr/ADR-006-modulo-c-decisiones.md`: decisiones y reconciliación de contradicciones documentales
 
+### Módulo D — Analytics & Reporting (implementado)
+- Pantalla "Estadísticas" en conducción: indicadores globales, comparativa de las últimas 3 cohortes, legajos por estado y por tipo de carrera, detalle por cohorte (RF-REP-001, US-D-001)
+- Filtro por tipo de carrera (`?tipo_carrera=`) en `/analytics/dashboard` y `/analytics/exportar`
+- Excel del dashboard con hoja de metadatos que incluye filtros aplicados y usuario que exportó (RF-REP-002, US-D-003)
+
 **Nota:** las decisiones de diseño de B y C están registradas en `docs/adr/ADR-006-modulo-c-decisiones.md`; el SRS y `ARQUITECTURA.md` son la fuente de verdad ante discrepancias con PRD/BFD.
 
 ---

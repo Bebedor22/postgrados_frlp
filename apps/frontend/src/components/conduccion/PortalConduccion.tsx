@@ -16,6 +16,7 @@ const MENU = [
     {texto: "Seminarios", ruta: "/conduccion/seminarios", icono: "🕮"},
     {texto: "Semáforo", ruta: "/conduccion/semaforo", icono: "🚦"},
     {texto: "En riesgo", ruta: "/conduccion/en-riesgo", icono: "⚠️"},
+    {texto: "Estadísticas", ruta: "/conduccion/estadisticas", icono: "📊"},
 ];
 
 /** Devuelve el usuario logueado; si no hay sesión o no tiene un rol de conducción, manda al login. */

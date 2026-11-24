@@ -24,7 +24,9 @@ class PostgresMetricasRepository(MetricasRepository):
     def __init__(self, session: AsyncSession):
         self._session = session
 
-    async def cargar_legajos(self, cohorte_id: Optional[str] = None) -> list[LegajoMetrica]:
+    async def cargar_legajos(
+            self, cohorte_id: Optional[str] = None, tipo_carrera: Optional[str] = None
+    ) -> list[LegajoMetrica]:
         consulta = (
             select(
                 LegajoModel.id,
@@ -43,6 +45,8 @@ class PostgresMetricasRepository(MetricasRepository):
         )
         if cohorte_id:
             consulta = consulta.where(LegajoModel.cohorte_id == _a_uuid(cohorte_id))
+        if tipo_carrera:
+            consulta = consulta.where(LegajoModel.tipo_carrera == tipo_carrera)
 
         resultado = await self._session.execute(consulta)
         return [

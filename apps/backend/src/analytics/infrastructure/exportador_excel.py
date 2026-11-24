@@ -1,6 +1,7 @@
 """Exportación del dashboard a Excel (RF-REP-002)."""
 from io import BytesIO
 from datetime import datetime
+from typing import Optional
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
@@ -14,6 +15,7 @@ CABECERAS = [
 ]
 ANCHOS = [28, 8, 12, 10, 11, 9, 11, 12, 16, 30]
 COLOR = "1D6B59"
+SIN_FILTROS = "Sin filtros (todas las cohortes)"
 
 
 def _estilo_encabezado(hoja, fila=1) -> None:
@@ -22,7 +24,11 @@ def _estilo_encabezado(hoja, fila=1) -> None:
         celda.fill = PatternFill("solid", fgColor=COLOR)
 
 
-def exportar_dashboard_a_excel(metricas: MetricasDashboard) -> bytes:
+def exportar_dashboard_a_excel(
+        metricas: MetricasDashboard,
+        filtros: str = SIN_FILTROS,
+        usuario: Optional[str] = None,
+) -> bytes:
     libro = Workbook()
 
     resumen = libro.active
@@ -69,7 +75,8 @@ def exportar_dashboard_a_excel(metricas: MetricasDashboard) -> bytes:
     metadatos.append(["Campo", "Valor"])
     _estilo_encabezado(metadatos)
     metadatos.append(["Fecha de generación", datetime.now()])
-    metadatos.append(["Filtros aplicados", "Sin filtros (todas las cohortes)"])
+    metadatos.append(["Filtros aplicados", filtros])
+    metadatos.append(["Exportado por", usuario or "—"])
     metadatos.append(["Origen", "Sistema de Posgrado - Módulo D"])
     metadatos.column_dimensions["A"].width = 26
     metadatos.column_dimensions["B"].width = 50

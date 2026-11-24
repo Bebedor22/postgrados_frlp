@@ -1,4 +1,6 @@
 """API del Módulo D: dashboard de estadísticas y exportación a Excel."""
+from typing import Literal, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,13 +14,15 @@ from ..application.consultar_metricas import (
     metricas_por_cohorte,
 )
 from ..domain.metricas import MetricasCohorte
-from ..infrastructure.exportador_excel import exportar_dashboard_a_excel
+from ..infrastructure.exportador_excel import SIN_FILTROS, exportar_dashboard_a_excel
 from ..infrastructure.pg_repository import PostgresMetricasRepository
 from .schemas import DashboardResponse, MetricasCohorteResponse
 
 router = APIRouter()
 
 puede_leer = require_role("COORDINADOR", "DIRECCION")
+
+TipoCarrera = Literal["Especializacion", "Maestria", "Doctorado"]
 
 
 def _cohorte_response(metricas: MetricasCohorte) -> MetricasCohorteResponse:
@@ -47,10 +51,11 @@ def _cohorte_response(metricas: MetricasCohorte) -> MetricasCohorteResponse:
     ),
 )
 async def api_dashboard(
+        tipo_carrera: Optional[TipoCarrera] = None,
         db: AsyncSession = Depends(get_db, scope="function"),
         _usuario: dict = Depends(puede_leer),
 ):
-    metricas = await dashboard(PostgresMetricasRepository(db))
+    metricas = await dashboard(PostgresMetricasRepository(db), tipo_carrera)
     return DashboardResponse(
         total_inscriptos=metricas.total_inscriptos,
         activos=metricas.activos,
@@ -91,11 +96,16 @@ async def api_metricas_cohorte(
     responses={200: {"content": {"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}}}},
 )
 async def api_exportar(
+        tipo_carrera: Optional[TipoCarrera] = None,
         db: AsyncSession = Depends(get_db, scope="function"),
-        _usuario: dict = Depends(puede_leer),
+        usuario: dict = Depends(puede_leer),
 ):
-    metricas = await dashboard_para_exportar(PostgresMetricasRepository(db))
-    contenido = exportar_dashboard_a_excel(metricas)
+    metricas = await dashboard_para_exportar(PostgresMetricasRepository(db), tipo_carrera)
+    contenido = exportar_dashboard_a_excel(
+        metricas,
+        filtros=f"Tipo de carrera: {tipo_carrera}" if tipo_carrera else SIN_FILTROS,
+        usuario=usuario.get("email"),
+    )
     return Response(
         content=contenido,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
