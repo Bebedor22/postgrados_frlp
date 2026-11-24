@@ -23,6 +23,8 @@ const VACIO: Formulario = {nombre: "", codigo: "", horas_catedra: "32", docente_
 
 export default function SeminariosConduccionScreen() {
     const usuario = useUsuarioConduccion();
+    // Solo la coordinación da de alta seminarios: la Dirección los consulta
+    const esCoordinador = usuario?.rol === "COORDINADOR";
     const [seminarios, setSeminarios] = useState<Seminario[] | null>(null);
     const [carreras, setCarreras] = useState<Carrera[]>([]);
     const [inscriptos, setInscriptos] = useState<Record<string, number>>({});
@@ -88,18 +90,18 @@ export default function SeminariosConduccionScreen() {
         <PortalConduccion
             usuario={usuario}
             titulo="Seminarios por carrera"
-            accion={
+            accion={esCoordinador ? (
                 <Boton
                     texto={mostrarFormulario ? "Cancelar" : "+ Nuevo seminario"}
                     tipo={mostrarFormulario ? "secundario" : "exito"}
                     alPresionar={() => setMostrarFormulario(!mostrarFormulario)}
                 />
-            }
+            ) : undefined}
         >
             {error ? <Text style={{color: "#b91c1c", fontSize: 13}}>{error}</Text> : null}
             {aviso ? <Text style={{color: "#065f46", fontSize: 13}}>{aviso}</Text> : null}
 
-            {mostrarFormulario ? (
+            {esCoordinador && mostrarFormulario ? (
                 <Tarjeta titulo="Nuevo seminario">
                     <Text style={{fontSize: 12, color: "#6b7280", marginBottom: 8}}>Carrera</Text>
                     <View style={{flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14}}>

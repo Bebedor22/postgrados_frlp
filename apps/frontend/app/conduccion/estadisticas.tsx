@@ -154,7 +154,7 @@ export default function EstadisticasScreen() {
                         <Indicador titulo="Activos" valor={String(datos.activos)} color="#047857"/>
                         <Indicador titulo="Graduados" valor={String(datos.graduados)} color="#047857"/>
                         <Indicador titulo="Bajas" valor={String(datos.bajas)} color="#6b7280"
-                                   detalle="Baja, vencido o rechazado"/>
+                                   detalle="Se matricularon y abandonaron"/>
                         <Indicador
                             titulo="En riesgo" valor={String(datos.en_riesgo)} color="#b91c1c"
                             detalle="Ver detalle →"

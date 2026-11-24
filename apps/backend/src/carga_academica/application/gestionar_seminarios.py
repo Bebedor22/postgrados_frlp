@@ -9,9 +9,11 @@ from src.carga_academica.domain.entities import (
     EstudianteEnSeminario,
     InscripcionSeminario,
     ProgresoSeminarios,
+    ReglaAcademicaViolada,
     Seminario,
 )
 from src.carga_academica.domain.repo import SeminarioNoEncontrado, SeminarioRepository
+from src.inscripcion.domain.entities import EstadoLegajo, Legajo
 
 
 async def crear_seminario(
@@ -38,13 +40,21 @@ async def crear_seminario(
 
 
 async def inscribir_estudiante(
-        legajo_id: str, seminario_id: str, repo: SeminarioRepository
+        legajo: Legajo, seminario_id: str, repo: SeminarioRepository
 ) -> InscripcionSeminario:
-    if await repo.obtener_seminario(seminario_id) is None:
+    """Solo un estudiante ACTIVO cursa, y solo los seminarios de su propia carrera."""
+    seminario = await repo.obtener_seminario(seminario_id)
+    if seminario is None:
         raise SeminarioNoEncontrado(f"No existe el seminario {seminario_id}")
+    if legajo.estado != EstadoLegajo.ACTIVO:
+        raise ReglaAcademicaViolada(
+            f"Solo un estudiante ACTIVO puede inscribirse a un seminario: el legajo está {legajo.estado.value}"
+        )
+    if str(legajo.carrera_id) != str(seminario.carrera_id):
+        raise ReglaAcademicaViolada("El seminario es de otra carrera: el estudiante solo cursa los de la suya")
     inscripcion = InscripcionSeminario(
         id=str(uuid.uuid4()),
-        legajo_id=legajo_id,
+        legajo_id=legajo.id,
         seminario_id=seminario_id,
         estado=EstadoSeminario.CURSANDO,
     )

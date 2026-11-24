@@ -94,7 +94,7 @@ SEMINARIOS = [
 ]
 
 # Nota final de los legajos que ya cerraron la cursada (los demás quedan CURSANDO)
-NOTAS_FINALES = {"Fernández": 9.0, "Benítez": 8.5}
+NOTAS_FINALES = {"Benítez": 8.5}
 
 # Antigüedad de la cursada (días) para que el semáforo muestre los tres colores
 ANTIGUEDAD_CURSADA = {"Romero": 900, "Medina": 500}
@@ -111,7 +111,7 @@ ASPIRANTES = [
     ("Ríos", "Camila", "37010455", 1, "OBSERVADO", None),
     ("Ortiz", "Agustina", "40123987", 0, "OBSERVADO", "30"),
     ("Fernández", "Lucía", "31877220", 0, "COMPLETADO", None),
-    ("Benítez", "Joaquín", "35987456", 2, "COMPLETADO", "100"),
+    ("Benítez", "Joaquín", "35987456", 2, "ACTIVO", "100"),
     ("Medina", "Sofía", "36222333", 1, "ACTIVO", None),
     ("Romero", "Bruno", "34111999", 0, "ACTIVO", None),
     ("Silva", "Carolina", "38765432", 1, "RECHAZADO", None),
@@ -307,25 +307,25 @@ async def cargar_carga_academica(cohorte_id: str) -> None:
         repo_legajos = PostgresLegajoRepository(session)
         seminarios = await repo_seminarios.listar()
 
-        for estado in (EstadoLegajo.ACTIVO, EstadoLegajo.COMPLETADO):
-            legajos, _ = await repo_legajos.buscar(
-                FiltrosLegajos(cohorte_id=cohorte_id, estado=estado, por_pagina=100)
-            )
-            for legajo in legajos:
-                obligatorios = [
-                    s for s in seminarios
-                    if s.carrera_id == legajo.carrera_id and s.es_obligatorio
-                ]
-                for seminario in obligatorios:
-                    inscriptos = await repo_seminarios.listar_inscritos(seminario.id)
-                    if any(f.legajo_id == legajo.id for f in inscriptos):
-                        continue
-                    await inscribir_estudiante(legajo.id, seminario.id, repo_seminarios)
-                    nota = NOTAS_FINALES.get(legajo.apellido)
-                    if nota is not None:
-                        await registrar_nota_final(legajo.id, seminario.id, nota, repo_seminarios)
-                    detalle = f"nota {nota}" if nota is not None else "cursando"
-                    print(f"  ✔ {legajo.apellido} → {seminario.codigo} ({detalle})")
+        # Solo cursan los estudiantes ACTIVOS (la misma regla que la API)
+        legajos, _ = await repo_legajos.buscar(
+            FiltrosLegajos(cohorte_id=cohorte_id, estado=EstadoLegajo.ACTIVO, por_pagina=100)
+        )
+        for legajo in legajos:
+            obligatorios = [
+                s for s in seminarios
+                if s.carrera_id == legajo.carrera_id and s.es_obligatorio
+            ]
+            for seminario in obligatorios:
+                inscriptos = await repo_seminarios.listar_inscritos(seminario.id)
+                if any(f.legajo_id == legajo.id for f in inscriptos):
+                    continue
+                await inscribir_estudiante(legajo, seminario.id, repo_seminarios)
+                nota = NOTAS_FINALES.get(legajo.apellido)
+                if nota is not None:
+                    await registrar_nota_final(legajo.id, seminario.id, nota, repo_seminarios)
+                detalle = f"nota {nota}" if nota is not None else "cursando"
+                print(f"  ✔ {legajo.apellido} → {seminario.codigo} ({detalle})")
         await session.commit()
 
 
@@ -334,7 +334,7 @@ async def cargar_seguimiento(cohorte_id: str) -> None:
 
     - Romero (Maestría): cursada vieja + seminarios sin cerrar → ROJO.
     - Medina (Especialización): cursada a medio camino y sin trabajo final → AMARILLO.
-    - Fernández y Benítez: todo al día → VERDE.
+    - Benítez: seminarios aprobados y tesis aprobada en CPR → se gradúa.
     """
     async with AsyncSessionLocal() as session:
         repo_legajos = PostgresLegajoRepository(session)
@@ -383,10 +383,9 @@ async def cargar_seguimiento(cohorte_id: str) -> None:
                 )
                 print("  ✔ Benítez: tesis aprobada en CPR (lista para graduarse)")
             # Cierra el ciclo: así el dashboard tiene un graduado y el tiempo de graduación
-            if benitez.estado == EstadoLegajo.COMPLETADO:
-                await matricular_legajo(benitez.id, repo_legajos, COORDINADOR)
+            if benitez.estado == EstadoLegajo.ACTIVO:
                 await graduar_legajo(benitez.id, repo_legajos, COORDINADOR)
-                print("  ✔ Benítez: matriculado y graduado (para las métricas)")
+                print("  ✔ Benítez: graduado (para las métricas)")
         await session.commit()
 
 

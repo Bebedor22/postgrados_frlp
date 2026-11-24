@@ -36,7 +36,9 @@ export function useFormularioPaso() {
                     return;
                 }
                 setTramite(t);
-                setValores(t.datos);
+                // Lo guardado completa el formulario, pero sin pisar lo que la persona
+                // ya escribió mientras se cargaba (con una conexión lenta se perdía)
+                setValores((escrito) => ({...t.datos, ...escrito}));
             })
             .catch((e: ApiError) => setError(e.message));
     }, [token]);

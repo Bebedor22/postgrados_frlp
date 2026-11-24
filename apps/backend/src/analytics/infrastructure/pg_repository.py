@@ -1,12 +1,12 @@
 """Repositorio Postgres de métricas (Módulo D)."""
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.analytics.domain.metricas import CohorteInfo, LegajoMetrica
 from src.analytics.domain.repo import MetricasRepository
-from src.inscripcion.infrastructure.orm_models import LegajoModel
+from src.inscripcion.infrastructure.orm_models import AuditoriaLegajoModel, LegajoModel
 from src.oferta_academica.infrastructure.orm_models import CarreraModel, CohorteModel
 
 
@@ -27,6 +27,13 @@ class PostgresMetricasRepository(MetricasRepository):
     async def cargar_legajos(
             self, cohorte_id: Optional[str] = None, tipo_carrera: Optional[str] = None
     ) -> list[LegajoMetrica]:
+        # Si en el historial alguna vez pasó a ACTIVO, se matriculó
+        fue_activo = (
+            exists()
+            .where(AuditoriaLegajoModel.legajo_id == LegajoModel.id)
+            .where(AuditoriaLegajoModel.estado_nuevo == "ACTIVO")
+            .label("fue_activo")
+        )
         consulta = (
             select(
                 LegajoModel.id,
@@ -39,6 +46,7 @@ class PostgresMetricasRepository(MetricasRepository):
                 LegajoModel.semaforo,
                 LegajoModel.fecha_inscripcion,
                 LegajoModel.fecha_graduacion,
+                fue_activo,
             )
             .join(CohorteModel, CohorteModel.id == LegajoModel.cohorte_id)
             .outerjoin(CarreraModel, CarreraModel.id == LegajoModel.carrera_id)
@@ -61,6 +69,7 @@ class PostgresMetricasRepository(MetricasRepository):
                 semaforo=fila.semaforo,
                 fecha_inscripcion=_fecha(fila.fecha_inscripcion),
                 fecha_graduacion=_fecha(fila.fecha_graduacion),
+                fue_activo=bool(fila.fue_activo),
             )
             for fila in resultado.all()
         ]

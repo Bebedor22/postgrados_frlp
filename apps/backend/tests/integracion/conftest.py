@@ -130,10 +130,14 @@ async def oferta(cliente, cabeceras):
 
 
 @pytest.fixture
-def inscribir(cliente, oferta):
-    """Crea una inscripción y la lleva hasta donde se pida. Devuelve (token, legajo_id)."""
+def inscribir(cliente, oferta, cabeceras):
+    """Crea una inscripción y la lleva hasta donde se pida. Devuelve (token, legajo_id).
 
-    async def _inscribir(dni="35222111", carrera=0, completar=True, documentos=True, enviar=True, **datos):
+    Con `activo=True`, además la coordinación la revisa, la aprueba y la matricula (ACTIVO).
+    """
+
+    async def _inscribir(dni="35222111", carrera=0, completar=True, documentos=True, enviar=True, activo=False,
+                         **datos):
         r = await cliente.post("/inscripciones/", json={
             "cohorte_id": oferta["cohorte"], "carrera_id": oferta["carreras"][carrera], "tipo_documento": "DNI",
             "numero_documento": dni, "nombre": "Ana", "apellido": "Rodríguez", "email": "ana@mail.com",
@@ -148,6 +152,10 @@ def inscribir(cliente, oferta):
         if enviar:
             r = await cliente.post(f"/inscripciones/{token}/confirmar")
             assert r.status_code == 200, r.text
+        if activo:
+            for accion in ("revisar", "aprobar", "matricular"):
+                r = await cliente.post(f"/legajos/{legajo_id}/{accion}", headers=cabeceras["COORDINADOR"])
+                assert r.status_code == 200, r.text
         return token, legajo_id
 
     return _inscribir

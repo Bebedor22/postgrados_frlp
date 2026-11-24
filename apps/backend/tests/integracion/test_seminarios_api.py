@@ -20,7 +20,7 @@ async def test_ciclo_completo_de_un_seminario(cliente, cabeceras, oferta, inscri
     """Crear → inscribir → cargar nota → ver el progreso que usa el semáforo."""
     coord = cabeceras["COORDINADOR"]
     seminario = await _crear_seminario(cliente, cabeceras, oferta["carreras"][0])
-    _token, legajo_id = await inscribir()
+    _token, legajo_id = await inscribir(activo=True)
 
     r = await cliente.post(
         f"/seminarios/{seminario['id']}/estudiantes", json={"legajo_id": legajo_id}, headers=coord
@@ -58,7 +58,7 @@ async def test_ciclo_completo_de_un_seminario(cliente, cabeceras, oferta, inscri
 
 async def test_nota_menor_a_4_desaprobe_el_seminario(cliente, cabeceras, oferta, inscribir):
     seminario = await _crear_seminario(cliente, cabeceras, oferta["carreras"][0])
-    _token, legajo_id = await inscribir()
+    _token, legajo_id = await inscribir(activo=True)
     await cliente.post(
         f"/seminarios/{seminario['id']}/estudiantes", json={"legajo_id": legajo_id},
         headers=cabeceras["COORDINADOR"],
@@ -104,7 +104,7 @@ async def test_docente_solo_gestiona_su_propio_seminario(cliente, cabeceras, ofe
         cliente, cabeceras, oferta["carreras"][0],
         codigo="MET-02", docente_email="otro_docente@fenix.test",
     )
-    _token, legajo_id = await inscribir()
+    _token, legajo_id = await inscribir(activo=True)
 
     assert (
         await cliente.get(f"/seminarios/{propio['id']}/estudiantes", headers=cabeceras["DOCENTE"])
@@ -130,7 +130,7 @@ async def test_docente_solo_gestiona_su_propio_seminario(cliente, cabeceras, ofe
 async def test_avance_del_alumno_con_el_token(cliente, cabeceras, oferta, inscribir):
     """El aspirante ve su carga académica con el token de su link, sin login."""
     seminario = await _crear_seminario(cliente, cabeceras, oferta["carreras"][0])
-    token, legajo_id = await inscribir()
+    token, legajo_id = await inscribir(activo=True)
     await cliente.post(
         f"/seminarios/{seminario['id']}/estudiantes", json={"legajo_id": legajo_id},
         headers=cabeceras["COORDINADOR"],
@@ -217,7 +217,7 @@ async def test_errores_de_seminarios(cliente, cabeceras, oferta, inscribir):
     assert r.status_code == 404
 
     # Doble inscripción del mismo legajo
-    _token, legajo_id = await inscribir()
+    _token, legajo_id = await inscribir(activo=True)
     url = f"/seminarios/{seminario['id']}/estudiantes"
     assert (await cliente.post(url, json={"legajo_id": legajo_id}, headers=coord)).status_code == 201
     assert (await cliente.post(url, json={"legajo_id": legajo_id}, headers=coord)).status_code == 409
@@ -231,7 +231,7 @@ async def test_errores_de_seminarios(cliente, cabeceras, oferta, inscribir):
     assert r.status_code == 404
 
     # Notas fuera de rango (schema) y con dos decimales (dominio)
-    _token2, legajo2 = await inscribir(dni="35222112")
+    _token2, legajo2 = await inscribir(dni="35222112", activo=True)
     await cliente.post(url, json={"legajo_id": legajo2}, headers=coord)
     for nota in (11, 4.55):
         r = await cliente.patch(
@@ -246,3 +246,42 @@ async def test_errores_de_seminarios(cliente, cabeceras, oferta, inscribir):
         "/seminarios/progreso?legajo_id=00000000-0000-0000-0000-000000000000", headers=coord
     )
     assert r.status_code == 404
+
+
+async def test_solo_un_estudiante_activo_cursa_y_solo_seminarios_de_su_carrera(cliente, cabeceras, oferta, inscribir):
+    coord = cabeceras["COORDINADOR"]
+    seminario = await _crear_seminario(cliente, cabeceras, oferta["carreras"][0])
+    url = f"/seminarios/{seminario['id']}/estudiantes"
+
+    # PENDIENTE: todavía es aspirante
+    _t, pendiente = await inscribir(dni="30000001")
+    r = await cliente.post(url, json={"legajo_id": pendiente}, headers=coord)
+    assert r.status_code == 422, r.text
+    assert "ACTIVO" in r.json()["detail"]
+
+    # ACTIVO, pero de otra carrera (carrera 1)
+    _t, de_otra_carrera = await inscribir(dni="30000002", carrera=1, activo=True)
+    r = await cliente.post(url, json={"legajo_id": de_otra_carrera}, headers=coord)
+    assert r.status_code == 422, r.text
+    assert "otra carrera" in r.json()["detail"]
+
+    # ACTIVO y de la misma carrera: se inscribe
+    _t, activo = await inscribir(dni="30000003", activo=True)
+    assert (await cliente.post(url, json={"legajo_id": activo}, headers=coord)).status_code == 201
+
+
+async def test_email_del_docente_se_valida_y_se_guarda_en_minusculas(cliente, cabeceras, oferta):
+    datos = {"carrera_id": oferta["carreras"][0], "nombre": "Ética", "codigo": "ETI-09", "horas_catedra": 16}
+    r = await cliente.post(
+        "/seminarios/", json={**datos, "docente_email": "no-es-un-email"}, headers=cabeceras["COORDINADOR"]
+    )
+    assert r.status_code == 422
+
+    r = await cliente.post(
+        "/seminarios/", json={**datos, "docente_email": "  Docente@Fenix.TEST "}, headers=cabeceras["COORDINADOR"]
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["docente_email"] == "docente@fenix.test"
+    # Y el docente lo ve en su portal
+    codigos = [s["codigo"] for s in (await cliente.get("/seminarios/", headers=cabeceras["DOCENTE"])).json()]
+    assert "ETI-09" in codigos
