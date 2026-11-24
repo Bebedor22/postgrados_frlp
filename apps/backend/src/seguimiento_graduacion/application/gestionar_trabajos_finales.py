@@ -2,13 +2,14 @@
 from datetime import date
 from typing import Optional
 
+from src.inscripcion.domain.entities import EstadoLegajo
 from src.inscripcion.domain.notificaciones import Notificador, SinNotificaciones
 from src.inscripcion.domain.repo import LegajoRepository
 from src.carga_academica.domain.repo import SeminarioRepository
 
 from .gestionar_graduacion import graduar_si_corresponde
 from ..domain.repo import TrabajoFinalRepository
-from ..domain.trabajo_final import ReglaTrabajoFinalViolada, TrabajoFinal
+from ..domain.trabajo_final import LegajoNoActivo, ReglaTrabajoFinalViolada, TrabajoFinal
 
 
 class TrabajoFinalNoEncontrado(LookupError):
@@ -19,6 +20,15 @@ def _validar_tipo(tipo: str) -> str:
     if tipo not in ("TFI", "TESIS"):
         raise ReglaTrabajoFinalViolada("El tipo debe ser TFI o TESIS")
     return tipo
+
+
+def exigir_legajo_activo(estado: EstadoLegajo) -> None:
+    """Solo un legajo ACTIVO (aspirante ya aprobado y matriculado) puede tener un TFI/Tesis."""
+    if estado != EstadoLegajo.ACTIVO:
+        raise LegajoNoActivo(
+            f"No se puede registrar el trabajo final: el legajo está {estado.value} "
+            "y debe estar ACTIVO."
+        )
 
 
 async def registrar_trabajo_final(
